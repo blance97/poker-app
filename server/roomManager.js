@@ -182,6 +182,14 @@ class RoomManager {
         return { success, room: this._sanitizeRoom(room) };
     }
 
+    rebuy(roomId, playerId) {
+        const room = this.rooms.get(roomId);
+        if (!room || !room.game) return { error: 'No active game' };
+
+        const result = room.game.rebuy(playerId);
+        return { result, room: this._sanitizeRoom(room) };
+    }
+
     getGameState(roomId, playerId) {
         const room = this.rooms.get(roomId);
         if (!room || !room.game) return null;

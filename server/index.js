@@ -234,6 +234,30 @@ io.on('connection', (socket) => {
         callback({ state });
     });
 
+    socket.on('game:rebuy', (callback) => {
+        const player = connectedPlayers.get(socket.id);
+        if (!player || !player.roomId) return callback({ error: 'Not in a room' });
+
+        const { result, room } = roomManager.rebuy(player.roomId, player.id);
+
+        if (result.error) {
+            return callback({ error: result.error });
+        }
+
+        callback({ success: true, chips: result.chips });
+
+        // Announce rebuy
+        roomManager.addMessage(player.roomId, 'system', 'System', `${player.name} bought back in!`);
+        io.to(player.roomId).emit('chat:message', {
+            playerId: 'system',
+            playerName: 'System',
+            text: `${player.name} bought back in!`,
+            timestamp: Date.now(),
+        });
+
+        broadcastGameState(player.roomId);
+    });
+
     // Chat
     socket.on('chat:message', (text) => {
         const player = connectedPlayers.get(socket.id);

@@ -217,6 +217,32 @@ class PokerGame extends BaseGame {
         return result;
     }
 
+    rebuy(playerId) {
+        const playerIndex = this.players.findIndex(p => p.id === playerId);
+        if (playerIndex === -1) return { error: 'Player not in game' };
+
+        const ps = this.playerStates[playerId];
+        // Allow rebuy if chips <= 0
+        if (ps.chips > 0) return { error: 'You still have chips!' };
+
+        // Prevent rebuy if currently playing a hand (e.g. All-In)
+        if (ps.isActive && !ps.folded) return { error: 'Wait for hand to finish!' };
+
+        // Reset chips to starting amount
+        ps.chips = this.startingChips;
+        ps.folded = true; // Stay folded for current hand if active
+        ps.allIn = false;
+        ps.isActive = true; // Will be dealt in next hand
+
+        logger.info('POKER', `Player ${this.players[playerIndex].name} bought in for ${this.startingChips}`);
+
+        return {
+            success: true,
+            chips: ps.chips,
+            player: this.players[playerIndex].name
+        };
+    }
+
     _advanceGame() {
         // Check if only one non-folded player remains
         const activePlayers = this.players.filter(p => {

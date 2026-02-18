@@ -128,6 +128,18 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 </div>
                 <div className="game-table__my-chips">
                     💰 {gameState.myState ? formatChips(gameState.myState.chips) : 0}
+                    {gameState.myState && gameState.myState.chips === 0 && (
+                        <button
+                            className="game-table__rebuy-btn"
+                            onClick={() => {
+                                socket.emit('game:rebuy', (result) => {
+                                    if (result.error) alert(result.error);
+                                });
+                            }}
+                        >
+                            + Buy In
+                        </button>
+                    )}
                 </div>
             </div>
 
