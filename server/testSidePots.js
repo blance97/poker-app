@@ -1,5 +1,5 @@
 const { PokerGame } = require('./games/PokerGame');
-const logger = require('../utils/logger');
+const logger = require('./utils/logger');
 
 // Mock logger to avoid clutter
 logger.info = () => { };
