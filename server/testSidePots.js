@@ -2,7 +2,7 @@ const { PokerGame } = require('./games/PokerGame');
 const logger = require('./utils/logger');
 
 // Mock logger to avoid clutter
-logger.info = () => { };
+logger.info = console.log;
 logger.error = console.error;
 
 // Setup
@@ -18,44 +18,26 @@ game.playerStates['p1'].chips = 100;
 game.playerStates['p2'].chips = 200;
 game.playerStates['p3'].chips = 500;
 
+// Force dealer to make P1 the first to act (UTG)
+// 3 Players. Action starts after BB.
+// If Dealer = P1 (0). SB=P2, BB=P3. UTG=P1.
+// start() advances dealer. So set to 2 (P3), so it advances to 0 (P1).
+game.dealerIndex = 2;
+
 console.log('--- Starting Game ---');
 game.start();
 
-// Preflop: Blinds posted.
-// Alice (SB) 10, Bob (BB) 20. Charlie (Dealer) acts first?
-// 3 players. Dealer=0. SB=1, BB=2.
-// Wait, normal order: Dealer(0), SB(1), BB(2).
-// Action starts at UTG (Position after BB). Here it is Dealer (0) again?
-// Let's check logic:
-// 3 players. D=p1, SB=p2, BB=p3.
-// Action: p1.
-
-// game.playerStates indices match players array?
-// p1 at index 0. p2 at 1. p3 at 2.
-// Dealer is index 0 (p1).
-// SB is p2 (10). Chips: 190.
-// BB is p3 (20). Chips: 480.
-// Action on p1 (Dealer/UTG). Chips: 100.
-
 console.log('P1 (100) goes All-In');
-game.handleAction('p1', { action: 'raise', amount: 100 });
-// P1 bets 100 (All-in). Pot: 10+20+100 = 130? No, P1 adds 100.
-// Preflop calling amounts: CurrentBet=20.
-// P1 raises to 100.
-// ps['p1'].currentBet = 100. ps['p1'].chips = 0. AllIn.
+let res = game.handleAction('p1', { action: 'raise', amount: 100 });
+console.log('Result:', res);
 
 console.log('P2 (200) goes All-In');
-game.handleAction('p2', { action: 'raise', amount: 200 });
-// P2 (SB) already put 10. Needs 190 more to reach 200.
-// Call 100, Raise to 200.
-// Chips: 190 - 190 = 0. AllIn.
-// ps['p2'].currentBet = 200.
+res = game.handleAction('p2', { action: 'raise', amount: 200 });
+console.log('Result:', res);
 
 console.log('P3 (500) calls');
-game.handleAction('p3', { action: 'call' }); // Matches 200.
-// P3 (BB) put 20. Adds 180.
-// Chips: 480 - 180 = 300.
-// ps['p3'].currentBet = 200.
+res = game.handleAction('p3', { action: 'call' });
+console.log('Result:', res);
 
 console.log('Game Phase:', game.phase); // Should be 'flop' or 'showdown' dependent on logic?
 // All players acted?

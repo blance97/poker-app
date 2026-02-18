@@ -160,6 +160,16 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                     <div className="game-table__pot">
                         <span className="game-table__pot-label">POT</span>
                         <span className="game-table__pot-amount">{formatChips(gameState.pot)}</span>
+                        {gameState.pots && gameState.pots.length > 1 && (
+                            <div className="game-table__side-pots">
+                                {gameState.pots.map((pot, i) => (
+                                    <div key={i} className="game-table__side-pot-entry">
+                                        <span className="game-table__side-pot-label">{i === 0 ? 'Main' : `Side ${i}`}</span>
+                                        <span className="game-table__side-pot-value">{formatChips(pot.amount)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="game-table__community">
                         {gameState.communityCards.map((card, i) => (

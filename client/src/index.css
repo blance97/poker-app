@@ -871,15 +871,36 @@ body {
 
 .game-table__pot-amount {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--accent-gold);
-  text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.game-table__side-pots {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #fbbf24;
+  opacity: 0.9;
+}
+
+.game-table__side-pot-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .game-table__community {
   display: flex;
   gap: 8px;
+  min-height: 96px;
+  /* Space for cards */
 }
 
 /* ── Seat positioning (8 seats around oval) ── */

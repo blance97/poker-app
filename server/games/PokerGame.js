@@ -288,9 +288,22 @@ class PokerGame extends BaseGame {
         // Make sure everyone has had a chance to act
         // Check if we've come back around to the last raiser
         const nextPlayer = this._getPositionAfter(this.currentPlayerIndex);
-        if (this.lastRaiserIndex >= 0 && nextPlayer === this.lastRaiserIndex && this.roundActions > 0) {
-            return true;
+
+        // If last raiser is defined
+        if (this.lastRaiserIndex >= 0) {
+            const raiserState = this.playerStates[this.players[this.lastRaiserIndex].id];
+            // If raiser is all-in or folded, they won't act again. 
+            // Since allMatched is true, everyone else has called the all-in/raise.
+            if (raiserState.allIn || raiserState.folded) {
+                return true;
+            }
+
+            // Standard check: if action is back to raiser
+            if (nextPlayer === this.lastRaiserIndex && this.roundActions > 0) {
+                return true;
+            }
         }
+
         if (this.lastRaiserIndex < 0 && allMatched && this.roundActions >= activePlayers.length) {
             return true;
         }
@@ -599,6 +612,11 @@ class PokerGame extends BaseGame {
         return {
             phase: this.phase,
             pot: this.pot,
+            pots: this.pots.map(p => ({
+                amount: p.amount,
+                contributors: p.contributors,
+                winners: p.winners
+            })),
             communityCards: this.communityCards,
             currentBet: this.currentBet,
             handNumber: this.handNumber,
@@ -642,6 +660,7 @@ class PokerGame extends BaseGame {
         return {
             phase: this.phase,
             pot: this.pot,
+            pots: this.pots,
             communityCards: this.communityCards,
             currentBet: this.currentBet,
             players: this.players.map((p, i) => ({
