@@ -55,6 +55,7 @@ class PokerGame extends BaseGame {
         this.deck.reset();
         this.communityCards = [];
         this.pot = 0;
+        this.pots = []; // Reset pots
         this.currentBet = 0;
         this.lastRaiserIndex = -1;
         this.roundActions = 0;
@@ -298,6 +299,9 @@ class PokerGame extends BaseGame {
     }
 
     _advancePhase() {
+        // Distribute current bets into pots before resetting them
+        this._distributeBetsToPots();
+
         const phaseIndex = PHASES.indexOf(this.phase);
         if (phaseIndex >= 3) {
             // After river, go to showdown
@@ -352,62 +356,214 @@ class PokerGame extends BaseGame {
         logger.info('POKER', `Phase: ${this.phase}, Community: ${this.communityCards.map(c => `${c.rank}${c.suit[0]}`).join(' ')}`);
     }
 
+    _distributeBetsToPots() {
+        // Collect all bets from this round
+        const bets = [];
+        for (const p of this.players) {
+            const bet = this.playerStates[p.id].currentBet;
+            if (bet > 0) {
+                bets.push({ id: p.id, amount: bet, isAllIn: this.playerStates[p.id].allIn });
+            }
+        }
+
+        if (bets.length === 0) return;
+
+        // Sort unique bet amounts (levels)
+        const levels = [...new Set(bets.map(b => b.amount))].sort((a, b) => a - b);
+
+        let prevLevel = 0;
+        for (const level of levels) {
+            const potAmount = level - prevLevel;
+            const contributors = bets.filter(b => b.amount >= level);
+
+            // Should we add to last pot or create new?
+            // If last pot has same contributors (or subset that can match), maybe merge?
+            // Simple approach: Always create new slice, merge later if needed (or just execute multiple pots)
+            // Smart approach: Reuse last pot if no one went all-in at prevLevel?
+
+            // Logic:
+            // 1. Calculate amount for this level from all eligible contributors.
+            // 2. See if any contributor is All-In at strictly less than this level? No, levels are sorted bets.
+            //    If level is 100, and someone went all-in for 100.
+            //    Then anyone taking part in level 100+ is contributing to this pot.
+            //    But if someone is all in at 100, they CANNOT contribute to >100.
+
+            // Actually, simplified:
+            // Create a pot for each segment.
+            // Segment 0 to Level 1.
+            // Segment Level 1 to Level 2.
+
+            const currentSegmentAmount = contributors.length * potAmount;
+            const eligiblePlayerIds = contributors.map(b => b.id);
+
+            // Check if we can merge with the last pot
+            // We can merge if the last pot exists AND the set of eligible players is identical
+            const lastPot = this.pots[this.pots.length - 1];
+            if (lastPot && JSON.stringify(lastPot.contributors.sort()) === JSON.stringify(eligiblePlayerIds.sort())) {
+                lastPot.amount += currentSegmentAmount;
+            } else {
+                this.pots.push({
+                    amount: currentSegmentAmount,
+                    contributors: eligiblePlayerIds,
+                    winners: []
+                });
+            }
+            prevLevel = level;
+        }
+    }
+
     _resolveWinner(winners) {
         this.phase = 'showdown';
-        const winAmount = Math.floor(this.pot / winners.length);
+        // If only one player remains, they win the entire pot (which is the sum of all current bets)
+        // This is a special case where no showdown evaluation is needed.
+        // We need to ensure the pot is correctly calculated from current bets.
 
-        this.winners = winners.map(p => {
-            this.playerStates[p.id].chips += winAmount;
-            const evaluation = this.playerStates[p.id].holeCards.length >= 2 && this.communityCards.length >= 3
-                ? evaluateBestHand([...this.playerStates[p.id].holeCards, ...this.communityCards])
-                : { name: 'Winner by fold', ranking: 0 };
-            return {
-                playerId: p.id,
-                name: p.name,
-                chips: this.playerStates[p.id].chips,
-                amount: winAmount,
-                hand: evaluation.name,
-            };
-        });
+        // First, distribute current bets into pots
+        this._distributeBetsToPots();
 
-        logger.info('POKER', `Winner: ${this.winners.map(w => w.name).join(', ')} wins ${this.pot}`);
+        // Now, resolve the pots. Since there's only one winner, they take all.
+        const winnerPlayer = winners[0];
+        let totalWinAmount = 0;
+
+        for (const pot of this.pots) {
+            if (pot.contributors.includes(winnerPlayer.id)) {
+                totalWinAmount += pot.amount;
+                pot.winners.push({
+                    playerId: winnerPlayer.id,
+                    name: winnerPlayer.name,
+                    hand: 'Winner by fold',
+                    amount: pot.amount
+                });
+            }
+        }
+
+        this.playerStates[winnerPlayer.id].chips += totalWinAmount;
+
+        this.winners = [{
+            playerId: winnerPlayer.id,
+            name: winnerPlayer.name,
+            chips: this.playerStates[winnerPlayer.id].chips,
+            amount: totalWinAmount,
+            hand: 'Winner by fold',
+        }];
+
+        logger.info('POKER', `Winner: ${this.winners.map(w => w.name).join(', ')} wins ${totalWinAmount}`);
     }
 
     _resolveShowdown() {
-        const activePlayers = this.players.filter(p => {
+        // If we have no pots (e.g. everyone checked preflop?), use main pot logic or treat existing 'pot' as one
+        if (this.pots.length === 0 && this.pot > 0) {
+            // Should not happen if _distributeBetsToPots is called, but fallback
+            const activePlayers = this.players.filter(p => {
+                const ps = this.playerStates[p.id];
+                return ps.isActive && !ps.folded;
+            });
+            this.pots.push({
+                amount: this.pot,
+                contributors: activePlayers.map(p => p.id),
+                winners: []
+            });
+        }
+
+        const activePlayersMap = {};
+        this.players.forEach(p => {
             const ps = this.playerStates[p.id];
-            return ps.isActive && !ps.folded;
+            if (ps.isActive && !ps.folded) {
+                activePlayersMap[p.id] = p;
+            }
         });
 
-        const playersForEval = activePlayers.map(p => ({
-            id: p.id,
-            name: p.name,
-            holeCards: this.playerStates[p.id].holeCards,
-        }));
+        this.winners = [];
+        this.showdownResults = []; // Flattened results for UI
+        const handledPlayers = new Set(); // To avoid dupes in winners list if winning multiple pots
 
-        const { winners, allResults } = determineWinners(playersForEval, this.communityCards);
-        const winAmount = Math.floor(this.pot / winners.length);
+        // Resolve each pot
+        for (const pot of this.pots) {
+            if (pot.amount === 0) continue;
 
-        this.winners = winners.map(w => {
-            this.playerStates[w.playerId].chips += winAmount;
-            return {
-                playerId: w.playerId,
-                name: w.name,
-                chips: this.playerStates[w.playerId].chips,
-                amount: winAmount,
-                hand: w.evaluation.name,
-            };
-        });
+            const eligible = pot.contributors.filter(id => activePlayersMap[id]);
+            if (eligible.length === 0) continue; // Should not happen if pot has chips
 
-        // Store all results for display
-        this.showdownResults = allResults.map(r => ({
-            playerId: r.playerId,
-            name: r.name,
-            hand: r.evaluation.name,
-            holeCards: this.playerStates[r.playerId].holeCards,
-        }));
+            // If only one, they win
+            if (eligible.length === 1) {
+                const winnerId = eligible[0];
+                this.playerStates[winnerId].chips += pot.amount;
+                pot.winners = [{ playerId: winnerId, name: activePlayersMap[winnerId].name, hand: 'Winner', amount: pot.amount }];
 
-        logger.info('POKER', `Showdown! Winners: ${this.winners.map(w => `${w.name} (${w.hand})`).join(', ')}`);
+                // Add to main winners list for UI
+                const existing = this.winners.find(x => x.playerId === winnerId);
+                if (existing) {
+                    existing.amount += pot.amount;
+                } else {
+                    this.winners.push({
+                        playerId: winnerId,
+                        name: activePlayersMap[winnerId].name,
+                        chips: this.playerStates[winnerId].chips,
+                        amount: pot.amount,
+                        hand: 'Winner by fold' // Or just 'Winner'
+                    });
+                }
+                continue;
+            }
+
+            // Evaluate hands
+            const playersForEval = eligible.map(id => ({
+                id: id,
+                name: activePlayersMap[id].name,
+                holeCards: this.playerStates[id].holeCards,
+            }));
+
+            const { winners, allResults } = determineWinners(playersForEval, this.communityCards);
+            const winAmount = Math.floor(pot.amount / winners.length);
+            const remainder = pot.amount % winners.length;
+
+            // Update winners
+            // Distribute chips
+            winners.forEach((w, idx) => {
+                const extra = idx < remainder ? 1 : 0;
+                const totalWin = winAmount + extra;
+                this.playerStates[w.playerId].chips += totalWin;
+
+                pot.winners.push({
+                    playerId: w.playerId,
+                    name: w.name,
+                    hand: w.evaluation.name,
+                    amount: totalWin
+                });
+            });
+
+            // Add to main winners list for UI (aggregating amounts)
+            winners.forEach(w => {
+                const existing = this.winners.find(x => x.playerId === w.playerId);
+                const potWin = pot.winners.find(pw => pw.playerId === w.playerId);
+                if (existing) {
+                    existing.amount += potWin.amount;
+                } else {
+                    this.winners.push({
+                        playerId: w.playerId,
+                        name: w.name,
+                        chips: this.playerStates[w.playerId].chips,
+                        amount: potWin.amount,
+                        hand: potWin.hand // Use the hand from the pot win
+                    });
+                }
+            });
+
+            // Collect all results
+            allResults.forEach(r => {
+                const existing = this.showdownResults.find(x => x.playerId === r.playerId);
+                if (!existing) {
+                    this.showdownResults.push({
+                        playerId: r.playerId,
+                        name: r.name,
+                        hand: r.evaluation.name,
+                        holeCards: this.playerStates[r.playerId].holeCards,
+                    });
+                }
+            });
+        }
+
+        logger.info('POKER', `Showdown! Winners: ${this.winners.map(w => `${w.name} (${w.amount})`).join(', ')}`);
     }
 
     getStateForPlayer(playerId) {
