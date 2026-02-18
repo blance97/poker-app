@@ -600,8 +600,11 @@ body {
   position: relative;
   flex-shrink: 0;
   transition: transform var(--transition-fast);
-  /* perspective: 500px; - Removed for Firefox compatibility */
-  transform-style: preserve-3d;
+  z-index: 1;
+  transform: translateZ(0);
+  background: transparent;
+  overflow: visible;
+  /* transform-style: preserve-3d; - Removed to simplify stacking context */
 }
 
 .card:hover {
@@ -633,9 +636,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  position: relative;
-  animation: cardDeal 0.4s ease backwards;
-  backface-visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 1 !important;
+  visibility: visible !important;
+  /* animation: cardDeal 0.4s ease forwards; - Temporarily disabled for Firefox debugging */
+  /* backface-visibility: hidden; - Removed for Firefox compatibility */
 }
 
 @keyframes cardDeal {
@@ -657,6 +664,11 @@ body {
   position: absolute;
   top: 4px;
   left: 6px;
+  color: inherit;
+  display: block;
+  z-index: 1;
+  opacity: 1;
+  visibility: visible;
 }
 
 .card--small .card__rank {
@@ -680,6 +692,11 @@ body {
 
 .card__suit {
   font-size: 24px;
+  color: inherit;
+  display: block;
+  z-index: 1;
+  opacity: 1;
+  visibility: visible;
 }
 
 .card--small .card__suit {
@@ -696,6 +713,11 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .card__back-pattern {
@@ -914,6 +936,7 @@ body {
   gap: 6px;
   z-index: 3;
   transition: all var(--transition-normal);
+  overflow: visible;
 }
 
 .seat--empty {
@@ -922,10 +945,10 @@ body {
 
 /* Position 0 = bottom center (me) */
 .seat--pos-0 {
-  bottom: 8px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 12;
+  z-index: 16;
 }
 
 /* Position 1 = bottom-left */
@@ -1064,6 +1087,10 @@ body {
 .seat__cards {
   display: flex;
   gap: 3px;
+  position: relative;
+  z-index: 1;
+  min-height: var(--card-h-sm);
+  overflow: visible;
 }
 
 .seat__bet {
@@ -1110,13 +1137,13 @@ body {
 /* Hand helper / handicap indicator */
 .game-table__hand-helper {
   position: fixed;
-  top: 22%;
-  left: 16px;
-  /* transform: translateX(-50%); Removed centering */
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 16;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
   pointer-events: none;
 }
@@ -1363,6 +1390,7 @@ body {
    ============================================================ */
 .action-bar {
   flex-shrink: 0;
+  position: relative;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--glass-border);
@@ -1489,8 +1517,9 @@ body {
    ============================================================ */
 .cheat-sheet__toggle {
   position: fixed;
-  top: 70px;
-  right: 20px;
+  top: 130px;
+  /* Moved down to avoid Hand Helper toggle */
+  right: 16px;
   background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
   border: none;
   color: white;
@@ -1839,7 +1868,8 @@ body {
 
   /* Move bottom seat position on mobile */
   .seat--pos-0 {
-    bottom: 4px;
+    bottom: 70px;
+    z-index: 16;
   }
 
   .seat--pos-1 {
