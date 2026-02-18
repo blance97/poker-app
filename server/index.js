@@ -1,6 +1,7 @@
 // server/index.js
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { RoomManager } = require('./roomManager');
@@ -10,13 +11,22 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ['http://localhost:5173', 'http://localhost:3000'],
+        origin: [
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'https://poker.lancedinh.com',
+        ],
         methods: ['GET', 'POST'],
     },
 });
 
 app.use(cors());
 app.use(express.json());
+
+// Serve built client in production
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, 'public')));
+}
 
 const roomManager = new RoomManager();
 
@@ -319,6 +329,13 @@ function processCPUTurns(roomId) {
         // Continue processing CPU turns
         setTimeout(() => processCPUTurns(roomId), 1200);
     }
+}
+
+// SPA catch-all — serve client for any non-API route in production
+if (process.env.NODE_ENV === 'production') {
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    });
 }
 
 const PORT = process.env.PORT || 3001;
