@@ -600,7 +600,8 @@ body {
   position: relative;
   flex-shrink: 0;
   transition: transform var(--transition-fast);
-  perspective: 500px;
+  /* perspective: 500px; - Removed for Firefox compatibility */
+  transform-style: preserve-3d;
 }
 
 .card:hover {
@@ -633,7 +634,8 @@ body {
   justify-content: center;
   gap: 2px;
   position: relative;
-  animation: cardDeal 0.4s ease;
+  animation: cardDeal 0.4s ease backwards;
+  backface-visibility: hidden;
 }
 
 @keyframes cardDeal {
@@ -1108,21 +1110,21 @@ body {
 /* Hand helper / handicap indicator */
 .game-table__hand-helper {
   position: fixed;
-  top: 56px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 22%;
+  left: 16px;
+  /* transform: translateX(-50%); Removed centering */
   z-index: 16;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   pointer-events: none;
 }
 
 .game-table__hand-helper-toggle {
   position: fixed;
-  top: 70px;
-  right: 180px;
+  top: 76px;
+  right: 16px;
   background: linear-gradient(135deg, var(--accent-gold), #d97706);
   border: none;
   color: #0a0e17;
