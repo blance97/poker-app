@@ -2,7 +2,7 @@
 import Card from './Card';
 import { formatChips } from '../utils/cardUtils';
 
-export default function PlayerSeat({ player, isMe, position }) {
+export default function PlayerSeat({ player, isMe, position, positionLabel, emote }) {
     if (!player) return <div className={`seat seat--empty seat--pos-${position}`}></div>;
 
     const { name, chips, holeCards, folded, allIn, isDealer, isCurrent, isCPU, currentBet } = player;
@@ -10,6 +10,12 @@ export default function PlayerSeat({ player, isMe, position }) {
     return (
         <div className={`seat seat--pos-${position} ${isCurrent ? 'seat--active' : ''} ${folded ? 'seat--folded' : ''} ${isMe ? 'seat--me' : ''}`}>
             {isDealer && <div className="seat__dealer-btn">D</div>}
+            {positionLabel && (
+                <div className={`seat__position-label${positionLabel.type !== 'dealer' ? ` seat__position-label--${positionLabel.type}` : ''}`}>
+                    {positionLabel.text}
+                </div>
+            )}
+            {emote && <div className="seat__emote-bubble" key={emote.ts}>{emote.emote}</div>}
             <div className="seat__info">
                 <span className="seat__name">
                     {isCPU && <span className="seat__cpu-badge">🤖</span>}

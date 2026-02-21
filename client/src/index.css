@@ -61,6 +61,10 @@
   padding: 0;
 }
 
+button {
+  touch-action: manipulation;
+}
+
 html,
 body,
 #root {
@@ -1432,18 +1436,97 @@ body {
   animation: slideUp 0.3s ease;
 }
 
-.action-bar__timer {
-  text-align: center;
-  margin-bottom: 10px;
+.action-bar__timer-wrap {
+  position: relative;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  margin-bottom: 8px;
+  overflow: visible;
+}
+
+.action-bar__timer-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-emerald);
+  transition: width 1s linear, background 0.3s ease;
+}
+
+.action-bar__timer-bar--urgent {
+  background: var(--accent-red);
+  animation: pulse 0.5s ease-in-out infinite;
 }
 
 .action-bar__timer-label {
-  font-size: 13px;
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--accent-emerald);
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Quick bet presets */
+.action-bar__quick-bets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.action-bar__quick-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  animation: pulse 1.5s ease-in-out infinite;
+  letter-spacing: 0.5px;
+}
+
+.action-bar__quick-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.action-bar__quick-btn:hover,
+.action-bar__quick-btn--active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+/* Pot odds badge */
+.action-bar__pot-odds {
+  display: inline-block;
+  margin-left: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  opacity: 0.85;
+}
+
+/* Keyboard hint */
+.action-bar__btn kbd {
+  display: inline-block;
+  margin-left: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 1px 4px;
+  opacity: 0.7;
 }
 
 .action-bar__buttons {
@@ -1807,11 +1890,31 @@ body {
 }
 
 .chat-box__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   padding: 10px 14px;
   font-size: 13px;
   font-weight: 700;
+  border: none;
   border-bottom: 1px solid var(--glass-border);
   color: var(--text-secondary);
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-box__toggle-icon {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* On desktop the body is always visible; on mobile it's collapsed by default */
+.chat-box__body {
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-box__messages {
@@ -1985,27 +2088,79 @@ body {
     gap: 4px;
   }
 
-  /* Action bar - more compact */
+  /* Action bar - mobile layout */
   .action-bar {
-    padding: 10px 12px;
+    padding: 8px 12px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Hide keyboard hints on mobile — no keyboard */
+  .action-bar__btn kbd {
+    display: none;
   }
 
   .action-bar__buttons {
     gap: 6px;
+    flex-wrap: wrap;
   }
 
-  .action-bar__btn {
-    padding: 8px 12px;
-    font-size: 11px;
-    letter-spacing: 0;
+  /* Fold and Check/Call take half-width each; Raise takes full width */
+  .action-bar__btn--fold,
+  .action-bar__btn--check,
+  .action-bar__btn--call {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .action-bar__btn--allin {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+
+  .action-bar__raise {
+    width: 100%;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .action-bar__slider {
-    width: 60px;
+    width: 100%;
+  }
+
+  .action-bar__btn--raise {
+    width: 100%;
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .action-bar__quick-bets {
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .action-bar__quick-bets::-webkit-scrollbar {
+    display: none;
+  }
+
+  .action-bar__quick-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    font-size: 12px;
+    min-height: 34px;
+    touch-action: manipulation;
   }
 
   .action-bar__timer-label {
-    font-size: 11px;
+    display: none;
   }
 
   /* Helper toggle is now inline in topbar, no override needed */
@@ -2040,15 +2195,23 @@ body {
     right: 0;
   }
 
-  /* Chat box - simpler on mobile */
+  /* Chat box - collapsed by default on mobile; tap header to expand */
   .chat-box {
     width: 200px;
-    bottom: 70px;
+    bottom: 8px;
     right: 8px;
   }
 
+  .chat-box__body {
+    display: none;
+  }
+
+  .chat-box--expanded .chat-box__body {
+    display: flex;
+  }
+
   .chat-box__messages {
-    height: 100px;
+    height: 110px;
   }
 
   /* Action log */
@@ -2159,22 +2322,172 @@ body {
     font-size: 18px;
   }
 
-  .action-bar__btn {
-    padding: 6px 8px;
-    font-size: 10px;
+  /* Action buttons — keep them big for touch; font slightly smaller */
+  .action-bar__btn--fold,
+  .action-bar__btn--check,
+  .action-bar__btn--call,
+  .action-bar__btn--allin {
+    font-size: 11px;
+    padding: 11px 6px;
   }
 
-  .action-bar__slider {
-    width: 50px;
+  .action-bar__btn--raise {
+    font-size: 11px;
   }
 
-  /* Hide chat box on tiny screens */
+  /* Slider stays full-width from 768px rule */
+
+  /* Chat box — small but accessible via tap */
   .chat-box {
-    display: none;
+    width: 170px;
+    bottom: 6px;
+    right: 6px;
   }
 
   /* Move action log above action bar */
   .game-table__log {
     bottom: 70px;
   }
+}
+
+/* ============================================================
+   POSITION LABEL
+   ============================================================ */
+.seat__position-label {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 2px 7px;
+  border-radius: 6px;
+  z-index: 5;
+  white-space: nowrap;
+  /* default: Dealer */
+  background: rgba(245, 158, 11, 0.9);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+}
+
+/* Small Blind — green */
+.seat__position-label--sb {
+  background: rgba(16, 185, 129, 0.9);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+/* Big Blind — red */
+.seat__position-label--bb {
+  background: rgba(239, 68, 68, 0.9);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+}
+
+/* ============================================================
+   EMOTE BUBBLE
+   ============================================================ */
+.seat__emote-bubble {
+  position: absolute;
+  top: -48px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 28px;
+  z-index: 20;
+  pointer-events: none;
+  animation: emote-float 3s ease-out forwards;
+}
+
+@keyframes emote-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(-30px) scale(1.15); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.9); }
+}
+
+/* ============================================================
+   BLINDS NOTIFICATION
+   ============================================================ */
+.blinds-notif {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+  color: #0a0e17;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: var(--radius);
+  z-index: 50;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+  animation: blinds-drop 0.4s ease, blinds-fade 0.5s ease 3.5s forwards;
+  white-space: nowrap;
+}
+
+@keyframes blinds-drop {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes blinds-fade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ============================================================
+   MUTE BUTTON & BLINDS IN TOPBAR
+   ============================================================ */
+.game-table__mute-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 16px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.game-table__mute-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.game-table__mute-btn--muted {
+  opacity: 0.5;
+}
+
+.game-table__blinds {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* ============================================================
+   CHAT EMOTE BUTTONS
+   ============================================================ */
+.chat-box__emotes {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+
+.chat-box__emote-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: transform var(--transition-fast);
+  line-height: 1;
+}
+
+.chat-box__emote-btn:hover {
+  transform: scale(1.3);
+  background: rgba(255, 255, 255, 0.08);
 }

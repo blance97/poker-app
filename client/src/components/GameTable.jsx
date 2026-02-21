@@ -1,14 +1,24 @@
 // client/src/components/GameTable.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import PlayerSeat from './PlayerSeat';
 import ActionBar from './ActionBar';
 import CheatSheet from './CheatSheet';
 import ChatBox from './ChatBox';
 import Card from './Card';
 import { formatChips } from '../utils/cardUtils';
+import { soundEngine } from '../utils/soundUtils';
 
-// Seat positions for up to 8 players around an oval table
-const SEAT_POSITIONS = [0, 1, 2, 3, 4, 5, 6, 7];
+// Returns { text, type } or null
+function getPositionLabel(posFromDealer, numPlayers) {
+    if (numPlayers <= 2) {
+        if (posFromDealer === 0) return { text: 'Dealer', type: 'dealer' };
+        return { text: 'Big Blind', type: 'bb' };
+    }
+    if (posFromDealer === 0) return { text: 'Dealer', type: 'dealer' };
+    if (posFromDealer === 1) return { text: 'Small Blind', type: 'sb' };
+    if (posFromDealer === 2) return { text: 'Big Blind', type: 'bb' };
+    return null;
+}
 
 export default function GameTable({ socket, player, roomId, onLeave }) {
     const [gameState, setGameState] = useState(null);
@@ -16,6 +26,14 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     const [actionLog, setActionLog] = useState([]);
     const [showResults, setShowResults] = useState(false);
     const [handicapMode, setHandicapMode] = useState(false);
+    const [muted, setMuted] = useState(false);
+    const [playerEmotes, setPlayerEmotes] = useState({});
+    const [showBlindsNotif, setShowBlindsNotif] = useState(false);
+    const [blindsText, setBlindsText] = useState('');
+
+    const prevPhaseRef = useRef(null);
+    const prevHandNumberRef = useRef(null);
+    const prevActionLogLenRef = useRef(0);
 
     useEffect(() => {
         const handleStateUpdate = (state) => {
@@ -40,12 +58,24 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             setShowResults(true);
         };
 
+        const handleEmote = ({ playerId, emote, timestamp }) => {
+            setPlayerEmotes(prev => ({ ...prev, [playerId]: { emote, ts: timestamp } }));
+            setTimeout(() => {
+                setPlayerEmotes(prev => {
+                    if (prev[playerId]?.ts !== timestamp) return prev;
+                    const next = { ...prev };
+                    delete next[playerId];
+                    return next;
+                });
+            }, 3000);
+        };
+
         socket.on('game:stateUpdate', handleStateUpdate);
         socket.on('game:actionTaken', handleAction);
         socket.on('chat:message', handleChat);
         socket.on('game:roundOver', handleRoundOver);
+        socket.on('chat:emote', handleEmote);
 
-        // Request initial state
         socket.emit('game:getState', (result) => {
             if (result.state) setGameState(result.state);
         });
@@ -55,8 +85,58 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             socket.off('game:actionTaken', handleAction);
             socket.off('chat:message', handleChat);
             socket.off('game:roundOver', handleRoundOver);
+            socket.off('chat:emote', handleEmote);
         };
     }, [socket]);
+
+    // Sound triggers on game state changes
+    useEffect(() => {
+        if (!gameState) return;
+
+        const prevPhase = prevPhaseRef.current;
+        const prevHand = prevHandNumberRef.current;
+
+        if (prevHand !== null && prevHand !== gameState.handNumber) {
+            // New hand started
+            soundEngine.playCardDeal();
+            if (gameState.blindsJustIncreased) {
+                soundEngine.playBlindsUp();
+                setBlindsText(`Blinds up: ${formatChips(gameState.smallBlind)}/${formatChips(gameState.bigBlind)}`);
+                setShowBlindsNotif(true);
+                setTimeout(() => setShowBlindsNotif(false), 4000);
+            }
+        }
+
+        if (prevPhase !== null && prevPhase !== gameState.phase) {
+            if (['flop', 'turn', 'river'].includes(gameState.phase)) {
+                soundEngine.playCardDeal();
+            }
+            if (gameState.phase === 'showdown' && gameState.winners) {
+                const iWon = gameState.winners.some(w => w.playerId === player.id);
+                if (iWon) soundEngine.playWin();
+                else soundEngine.playChip();
+            }
+        }
+
+        prevPhaseRef.current = gameState.phase;
+        prevHandNumberRef.current = gameState.handNumber;
+    }, [gameState, player.id]);
+
+    // Sound triggers for CPU actions
+    useEffect(() => {
+        const newActions = actionLog.slice(prevActionLogLenRef.current);
+        prevActionLogLenRef.current = actionLog.length;
+        newActions.forEach(a => {
+            if (a.isCPU) {
+                switch (a.action) {
+                    case 'fold': soundEngine.playFold(); break;
+                    case 'check': soundEngine.playCheck(); break;
+                    case 'call': soundEngine.playChip(); break;
+                    case 'raise': soundEngine.playRaise(); break;
+                }
+            }
+        });
+    }, [actionLog]);
 
     const handleAction = useCallback((action) => {
         socket.emit('game:action', action, (result) => {
@@ -80,11 +160,20 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         socket.emit('chat:message', text);
     }, [socket]);
 
+    const handleEmote = useCallback((emote) => {
+        socket.emit('chat:emote', emote);
+    }, [socket]);
+
     const handleLeave = useCallback(() => {
         socket.emit('room:leave', () => {
             onLeave();
         });
     }, [socket, onLeave]);
+
+    const handleMuteToggle = useCallback(() => {
+        const newMuted = soundEngine.toggle();
+        setMuted(newMuted);
+    }, []);
 
     if (!gameState) {
         return (
@@ -99,15 +188,24 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
 
     // Arrange players with current player at the bottom
     const myIndex = gameState.players.findIndex(p => p.id === player.id);
+    const numPlayers = gameState.players.length;
     const arrangedPlayers = [];
     for (let i = 0; i < 8; i++) {
-        const playerIndex = (myIndex + i) % gameState.players.length;
-        if (i < gameState.players.length) {
+        const playerIndex = (myIndex + i) % numPlayers;
+        if (i < numPlayers) {
             arrangedPlayers.push(gameState.players[playerIndex]);
         } else {
             arrangedPlayers.push(null);
         }
     }
+
+    // Position labels relative to dealer
+    const positionLabels = arrangedPlayers.map((p, i) => {
+        if (!p) return null;
+        const originalIndex = (myIndex + i) % numPlayers;
+        const posFromDealer = (originalIndex - gameState.dealerIndex + numPlayers) % numPlayers;
+        return getPositionLabel(posFromDealer, numPlayers);
+    });
 
     const phaseName = {
         preflop: 'Pre-Flop',
@@ -125,6 +223,11 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 <div className="game-table__info">
                     <span className="game-table__phase">{phaseName}</span>
                     <span className="game-table__hand">Hand #{gameState.handNumber}</span>
+                    {gameState.smallBlind && (
+                        <span className="game-table__blinds">
+                            {formatChips(gameState.smallBlind)}/{formatChips(gameState.bigBlind)}
+                        </span>
+                    )}
                 </div>
                 <div className="game-table__topbar-right">
                     <button
@@ -133,6 +236,13 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         title="Toggle hand helper"
                     >
                         {handicapMode ? '🧠 ON' : '🧠 Helper'}
+                    </button>
+                    <button
+                        className={`game-table__mute-btn ${muted ? 'game-table__mute-btn--muted' : ''}`}
+                        onClick={handleMuteToggle}
+                        title={muted ? 'Unmute sounds' : 'Mute sounds'}
+                    >
+                        {muted ? '🔇' : '🔊'}
                     </button>
                     <div className="game-table__my-chips">
                         💰 {gameState.myState ? formatChips(gameState.myState.chips) : 0}
@@ -152,6 +262,13 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 </div>
             </div>
 
+            {/* Blinds increase notification */}
+            {showBlindsNotif && (
+                <div className="blinds-notif">
+                    📈 {blindsText}
+                </div>
+            )}
+
             {/* Main table area */}
             <div className="game-table__felt">
                 {/* Player seats */}
@@ -161,6 +278,8 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         player={p}
                         isMe={p && p.id === player.id}
                         position={i}
+                        positionLabel={positionLabels[i]}
+                        emote={p ? playerEmotes[p.id] : null}
                     />
                 ))}
 
@@ -184,7 +303,6 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         {gameState.communityCards.map((card, i) => (
                             <Card key={i} card={card} dealDelay={i * 0.1} />
                         ))}
-                        {/* Empty placeholders for remaining community cards */}
                         {Array.from({ length: 5 - gameState.communityCards.length }).map((_, i) => (
                             <div key={`empty-${i}`} className="card card--placeholder"></div>
                         ))}
@@ -203,7 +321,6 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                                     <span className="game-table__winner-amount">+{formatChips(w.amount)}</span>
                                 </div>
                             ))}
-                            {/* Board cards */}
                             {gameState.communityCards && gameState.communityCards.length > 0 && (
                                 <div className="game-table__results-board">
                                     <div className="game-table__results-board-label">Board</div>
@@ -214,7 +331,6 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                                     </div>
                                 </div>
                             )}
-                            {/* Show all players' hands at showdown */}
                             {gameState.showdownResults && (
                                 <div className="game-table__showdown-hands">
                                     {gameState.showdownResults.map((r, i) => (
@@ -240,7 +356,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             {/* Action bar */}
             <ActionBar gameState={gameState} onAction={handleAction} />
 
-            {/* Hand helper badge - shows below topbar when enabled */}
+            {/* Hand helper badge */}
             {handicapMode && gameState.myHandInfo && !gameState.myState?.folded && (
                 <div className="game-table__hand-helper">
                     <span className="game-table__hand-badge-label">Your Hand</span>
@@ -263,7 +379,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
 
             {/* Side panels */}
             <CheatSheet />
-            <ChatBox messages={messages} onSend={handleSendChat} />
+            <ChatBox messages={messages} onSend={handleSendChat} onEmote={handleEmote} />
         </div>
     );
 }

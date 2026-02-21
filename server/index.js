@@ -258,6 +258,18 @@ io.on('connection', (socket) => {
         broadcastGameState(player.roomId);
     });
 
+    // Emote
+    socket.on('chat:emote', (emote) => {
+        const player = connectedPlayers.get(socket.id);
+        if (!player || !player.roomId) return;
+        io.to(player.roomId).emit('chat:emote', {
+            playerId: player.id,
+            playerName: player.name,
+            emote,
+            timestamp: Date.now(),
+        });
+    });
+
     // Chat
     socket.on('chat:message', (text) => {
         const player = connectedPlayers.get(socket.id);

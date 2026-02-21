@@ -52,6 +52,17 @@ class PokerGame extends BaseGame {
 
     _startNewHand() {
         this.handNumber++;
+
+        // Escalate blinds every 8 hands
+        if (this.handNumber > 1 && (this.handNumber - 1) % 8 === 0) {
+            this.smallBlind = Math.round(this.smallBlind * 1.5 / 5) * 5 || 5;
+            this.bigBlind = this.smallBlind * 2;
+            this.blindsJustIncreased = true;
+            logger.info('POKER', `Blinds increased to ${this.smallBlind}/${this.bigBlind}`);
+        } else {
+            this.blindsJustIncreased = false;
+        }
+
         this.deck.reset();
         this.communityCards = [];
         this.pot = 0;
@@ -612,6 +623,9 @@ class PokerGame extends BaseGame {
         return {
             phase: this.phase,
             pot: this.pot,
+            smallBlind: this.smallBlind,
+            bigBlind: this.bigBlind,
+            blindsJustIncreased: this.blindsJustIncreased || false,
             pots: this.pots.map(p => ({
                 amount: p.amount,
                 contributors: p.contributors,
