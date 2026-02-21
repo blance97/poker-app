@@ -601,10 +601,7 @@ body {
   flex-shrink: 0;
   transition: transform var(--transition-fast);
   z-index: 1;
-  transform: translateZ(0);
-  background: transparent;
-  overflow: visible;
-  /* transform-style: preserve-3d; - Removed to simplify stacking context */
+  display: flex;
 }
 
 .card:hover {
@@ -626,8 +623,7 @@ body {
 }
 
 .card__front {
-  width: 100%;
-  height: 100%;
+  flex: 1;
   background: var(--card-white);
   border-radius: 8px;
   box-shadow: var(--card-shadow);
@@ -636,23 +632,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 1 !important;
-  visibility: visible !important;
-  /* animation: cardDeal 0.4s ease forwards; - Temporarily disabled for Firefox debugging */
-  /* backface-visibility: hidden; - Removed for Firefox compatibility */
+  animation: cardDeal 0.3s ease-out backwards;
 }
 
 @keyframes cardDeal {
   from {
-    opacity: 0;
-    transform: scale(0.8) translateY(-20px);
+    transform: scale(0.82) translateY(-14px);
   }
 
   to {
-    opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
@@ -704,8 +692,7 @@ body {
 }
 
 .card__back {
-  width: 100%;
-  height: 100%;
+  flex: 1;
   background: linear-gradient(135deg, #1e40af, #7c3aed);
   border-radius: 8px;
   box-shadow: var(--card-shadow);
@@ -713,11 +700,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 1 !important;
-  visibility: visible !important;
+  animation: cardDeal 0.3s ease-out backwards;
 }
 
 .card__back-pattern {
@@ -997,7 +980,26 @@ body {
 }
 
 .seat--active {
-  filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.5));
+  /* NOTE: filter: drop-shadow removed — Firefox bug where filter on a parent
+     with position:absolute inner children (card__rank) causes card__front
+     to not composite correctly, making cards invisible. Use ::before glow instead. */
+}
+
+.seat--active::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 14px;
+  border: 2px solid rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.4), 0 0 40px rgba(16, 185, 129, 0.15);
+  pointer-events: none;
+  z-index: -1;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .seat--active::after {
@@ -1137,7 +1139,7 @@ body {
 /* Hand helper / handicap indicator */
 .game-table__hand-helper {
   position: fixed;
-  top: 76px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 16;
@@ -1148,32 +1150,37 @@ body {
   pointer-events: none;
 }
 
+/* Helper toggle is now inside the topbar (inline, not fixed) */
 .game-table__hand-helper-toggle {
-  position: fixed;
-  top: 76px;
-  right: 16px;
-  background: linear-gradient(135deg, var(--accent-gold), #d97706);
-  border: none;
-  color: #0a0e17;
-  padding: 10px 18px;
-  border-radius: var(--radius);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--accent-gold);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  z-index: 25;
   transition: all var(--transition-fast);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-  pointer-events: all;
+  white-space: nowrap;
 }
 
 .game-table__hand-helper-toggle:hover {
-  transform: translateY(-1px);
+  background: rgba(245, 158, 11, 0.22);
+  border-color: var(--accent-gold);
 }
 
 .game-table__hand-helper-toggle--active {
-  background: linear-gradient(135deg, #d97706, #b45309);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.25);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold-light);
+}
+
+/* Topbar right group */
+.game-table__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .game-table__hand-badge {
@@ -1242,12 +1249,14 @@ body {
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--accent-gold);
   border-radius: var(--radius-lg);
-  padding: 32px 40px;
+  padding: 28px 36px;
   text-align: center;
   min-width: 320px;
-  max-width: 500px;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: scaleIn 0.4s ease;
-  box-shadow: 0 0 40px rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 60px rgba(245, 158, 11, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes scaleIn {
@@ -1292,6 +1301,29 @@ body {
   font-family: 'JetBrains Mono', monospace;
   color: var(--accent-gold);
   font-weight: 700;
+}
+
+/* Board cards in results */
+.game-table__results-board {
+  margin: 12px 0 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.game-table__results-board-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.game-table__results-board-cards {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
 }
 
 .game-table__showdown-hands {
@@ -1512,13 +1544,30 @@ body {
   box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
 }
 
+/* Firefox slider styles */
+.action-bar__slider::-moz-range-track {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  border: none;
+}
+
+.action-bar__slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+  border: none;
+}
+
 /* ============================================================
    CHEAT SHEET
    ============================================================ */
 .cheat-sheet__toggle {
   position: fixed;
-  top: 130px;
-  /* Moved down to avoid Hand Helper toggle */
+  top: 76px;
   right: 16px;
   background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
   border: none;
@@ -1920,6 +1969,10 @@ body {
     font-size: 13px;
   }
 
+  .game-table__topbar-right {
+    gap: 6px;
+  }
+
   .game-table__pot-amount {
     font-size: 20px;
   }
@@ -1955,13 +2008,10 @@ body {
     font-size: 11px;
   }
 
-  /* Helper toggle */
+  /* Helper toggle is now inline in topbar, no override needed */
   .game-table__hand-helper-toggle {
-    top: 56px;
-    right: auto;
-    left: 12px;
-    padding: 7px 12px;
-    font-size: 11px;
+    padding: 5px 8px;
+    font-size: 10px;
   }
 
   .game-table__hand-badge {

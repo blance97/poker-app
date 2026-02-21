@@ -121,25 +121,34 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         <div className="game-table">
             {/* Top bar */}
             <div className="game-table__topbar">
-                <button className="game-table__leave-btn" onClick={handleLeave}>← Leave Table</button>
+                <button className="game-table__leave-btn" onClick={handleLeave}>← Leave</button>
                 <div className="game-table__info">
                     <span className="game-table__phase">{phaseName}</span>
                     <span className="game-table__hand">Hand #{gameState.handNumber}</span>
                 </div>
-                <div className="game-table__my-chips">
-                    💰 {gameState.myState ? formatChips(gameState.myState.chips) : 0}
-                    {gameState.myState && gameState.myState.chips === 0 && (
-                        <button
-                            className="game-table__rebuy-btn"
-                            onClick={() => {
-                                socket.emit('game:rebuy', (result) => {
-                                    if (result.error) alert(result.error);
-                                });
-                            }}
-                        >
-                            + Buy In
-                        </button>
-                    )}
+                <div className="game-table__topbar-right">
+                    <button
+                        className={`game-table__hand-helper-toggle ${handicapMode ? 'game-table__hand-helper-toggle--active' : ''}`}
+                        onClick={() => setHandicapMode(!handicapMode)}
+                        title="Toggle hand helper"
+                    >
+                        {handicapMode ? '🧠 ON' : '🧠 Helper'}
+                    </button>
+                    <div className="game-table__my-chips">
+                        💰 {gameState.myState ? formatChips(gameState.myState.chips) : 0}
+                        {gameState.myState && gameState.myState.chips === 0 && (
+                            <button
+                                className="game-table__rebuy-btn"
+                                onClick={() => {
+                                    socket.emit('game:rebuy', (result) => {
+                                        if (result.error) alert(result.error);
+                                    });
+                                }}
+                            >
+                                + Buy In
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -173,7 +182,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                     </div>
                     <div className="game-table__community">
                         {gameState.communityCards.map((card, i) => (
-                            <Card key={i} card={card} />
+                            <Card key={i} card={card} dealDelay={i * 0.1} />
                         ))}
                         {/* Empty placeholders for remaining community cards */}
                         {Array.from({ length: 5 - gameState.communityCards.length }).map((_, i) => (
@@ -186,7 +195,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 {showResults && gameState.winners && (
                     <div className="game-table__results">
                         <div className="game-table__results-card">
-                            <h3>🏆 {gameState.winners.length > 1 ? 'Split Pot!' : 'Winner!'}</h3>
+                            <h3>{gameState.winners.length > 1 ? '🤝 Split Pot!' : '🏆 Winner!'}</h3>
                             {gameState.winners.map((w, i) => (
                                 <div key={i} className="game-table__winner">
                                     <span className="game-table__winner-name">{w.name}</span>
@@ -194,6 +203,17 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                                     <span className="game-table__winner-amount">+{formatChips(w.amount)}</span>
                                 </div>
                             ))}
+                            {/* Board cards */}
+                            {gameState.communityCards && gameState.communityCards.length > 0 && (
+                                <div className="game-table__results-board">
+                                    <div className="game-table__results-board-label">Board</div>
+                                    <div className="game-table__results-board-cards">
+                                        {gameState.communityCards.map((card, i) => (
+                                            <Card key={i} card={card} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             {/* Show all players' hands at showdown */}
                             {gameState.showdownResults && (
                                 <div className="game-table__showdown-hands">
@@ -220,15 +240,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             {/* Action bar */}
             <ActionBar gameState={gameState} onAction={handleAction} />
 
-            {/* Handicap mode toggle */}
-            <button
-                className={`game-table__hand-helper-toggle ${handicapMode ? 'game-table__hand-helper-toggle--active' : ''}`}
-                onClick={() => setHandicapMode(!handicapMode)}
-            >
-                {handicapMode ? '🧠 Helper ON' : '🧠 Helper'}
-            </button>
-
-            {/* Hand helper badge */}
+            {/* Hand helper badge - shows below topbar when enabled */}
             {handicapMode && gameState.myHandInfo && !gameState.myState?.folded && (
                 <div className="game-table__hand-helper">
                     <span className="game-table__hand-badge-label">Your Hand</span>
