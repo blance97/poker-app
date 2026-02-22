@@ -147,7 +147,7 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   padding: 48px 40px;
-  width: 420px;
+  width: min(420px, 92vw);
   text-align: center;
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
@@ -983,12 +983,8 @@ body {
   right: 12%;
 }
 
-.seat--active {
-  /* NOTE: filter: drop-shadow removed — Firefox bug where filter on a parent
-     with position:absolute inner children (card__rank) causes card__front
-     to not composite correctly, making cards invisible. Use ::before glow instead. */
-}
-
+/* .seat--active intentionally has no filter — Firefox bug: filter on a parent
+   with position:absolute children hides card text. Glow handled by ::before. */
 .seat--active::before {
   content: '';
   position: absolute;
@@ -1002,8 +998,15 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .seat--active::after {
@@ -1222,58 +1225,7 @@ body {
   }
 }
 
-/* Results overlay */
-.game-table__results {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  z-index: 20;
-  animation: fadeIn 0.4s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.game-table__results-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--accent-gold);
-  border-radius: var(--radius-lg);
-  padding: 28px 36px;
-  text-align: center;
-  min-width: 320px;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: scaleIn 0.4s ease;
-  box-shadow: 0 0 60px rgba(245, 158, 11, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+/* Results overlay — REMOVED in favour of inline winner banner */
 
 .game-table__results-card h3 {
   font-size: 24px;
@@ -1541,6 +1493,7 @@ body {
   border: none;
   border-radius: var(--radius);
   padding: 12px 24px;
+  min-height: 44px;
   font-size: 14px;
   font-weight: 700;
   font-family: inherit;
@@ -1548,6 +1501,8 @@ body {
   transition: all var(--transition-fast);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .action-bar__btn:hover {
@@ -1599,6 +1554,44 @@ body {
 
 .action-bar__btn--allin:hover {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+/* ── Winner banner — flex strip between felt and action bar, always on top ── */
+.game-table__winner-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 20px;
+  background: rgba(10, 14, 23, 0.98);
+  border-top: 2px solid var(--accent-gold);
+  z-index: 30;
+  animation: bannerSlideUp 0.35s ease;
+}
+
+.game-table__winner-banner-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent-gold);
+  white-space: nowrap;
+}
+
+.game-table__winner-banner-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-table__winner-banner-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .action-bar__raise {
@@ -2110,6 +2103,7 @@ body {
   .action-bar__btn--call {
     flex: 1;
     min-width: 80px;
+    min-height: 52px;
     padding: 12px 8px;
     font-size: 13px;
   }
@@ -2117,6 +2111,7 @@ body {
   .action-bar__btn--allin {
     flex: 1;
     min-width: 80px;
+    min-height: 52px;
     padding: 12px 8px;
     font-size: 12px;
   }
@@ -2133,6 +2128,7 @@ body {
 
   .action-bar__btn--raise {
     width: 100%;
+    min-height: 52px;
     padding: 12px;
     font-size: 13px;
   }
@@ -2153,9 +2149,9 @@ body {
 
   .action-bar__quick-btn {
     flex-shrink: 0;
-    padding: 6px 14px;
+    padding: 8px 16px;
     font-size: 12px;
-    min-height: 34px;
+    min-height: 40px;
     touch-action: manipulation;
   }
 
@@ -2225,24 +2221,31 @@ body {
     padding: 3px 6px;
   }
 
-  /* Results overlay */
-  .game-table__results-card {
-    padding: 20px 24px;
-    min-width: 260px;
-    max-width: 90vw;
+  /* Winner banner on mobile — keep it compact */
+  .game-table__winner-banner {
+    bottom: 6px;
+    padding: 12px 16px;
+    max-width: 96vw;
   }
 
-  .game-table__results-card h3 {
-    font-size: 18px;
-  }
-
-  .game-table__winner-name {
-    font-size: 14px;
+  .game-table__winner-banner-title {
+    font-size: 16px;
   }
 
   .game-table__next-hand-btn {
-    padding: 10px 24px;
+    width: 100%;
+    padding: 12px 16px;
     font-size: 13px;
+  }
+
+  /* Login card fits any phone */
+  .login__card {
+    padding: 36px 28px;
+  }
+
+  .login h1,
+  .login__card h1 {
+    font-size: 24px;
   }
 
   /* Lobby adjustments */
@@ -2260,18 +2263,6 @@ body {
 
   .lobby__cpu-row {
     flex-direction: column;
-  }
-
-  /* Login */
-  .login {
-    padding: 24px;
-    min-width: auto;
-    width: 90vw;
-    max-width: 400px;
-  }
-
-  .login h1 {
-    font-size: 28px;
   }
 }
 
@@ -2322,17 +2313,30 @@ body {
     font-size: 18px;
   }
 
-  /* Action buttons — keep them big for touch; font slightly smaller */
+  /* Action buttons — big for touch */
   .action-bar__btn--fold,
   .action-bar__btn--check,
   .action-bar__btn--call,
   .action-bar__btn--allin {
     font-size: 11px;
-    padding: 11px 6px;
+    min-height: 48px;
+    padding: 10px 6px;
   }
 
   .action-bar__btn--raise {
     font-size: 11px;
+    min-height: 48px;
+  }
+
+  /* Slider thumb bigger for touch */
+  .action-bar__slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .action-bar__slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
   }
 
   /* Slider stays full-width from 768px rule */
@@ -2398,9 +2402,20 @@ body {
 }
 
 @keyframes emote-float {
-  0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-  70%  { opacity: 1; transform: translateX(-50%) translateY(-30px) scale(1.15); }
-  100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.9); }
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-30px) scale(1.15);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-50px) scale(0.9);
+  }
 }
 
 /* ============================================================
@@ -2424,13 +2439,25 @@ body {
 }
 
 @keyframes blinds-drop {
-  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 @keyframes blinds-fade {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 /* ============================================================

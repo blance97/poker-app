@@ -13,6 +13,7 @@ class PokerGame extends BaseGame {
         this.smallBlind = options.smallBlind || 10;
         this.bigBlind = options.bigBlind || 20;
         this.startingChips = options.startingChips || 1000;
+        this.roomId = options.roomId || 'unknown';
         this.deck = new Deck();
         this.communityCards = [];
         this.pot = 0;
@@ -23,6 +24,7 @@ class PokerGame extends BaseGame {
         this.currentPlayerIndex = 0;
         this.lastRaiserIndex = -1;
         this.roundActions = 0;
+        this.bigBlindHasOption = false;
         this.winners = null;
         this.handNumber = 0;
 
@@ -58,7 +60,7 @@ class PokerGame extends BaseGame {
             this.smallBlind = Math.round(this.smallBlind * 1.5 / 5) * 5 || 5;
             this.bigBlind = this.smallBlind * 2;
             this.blindsJustIncreased = true;
-            logger.info('POKER', `Blinds increased to ${this.smallBlind}/${this.bigBlind}`);
+            logger.info('POKER', `[${this.roomId}] Blinds increased to ${this.smallBlind}/${this.bigBlind}`);
         } else {
             this.blindsJustIncreased = false;
         }
@@ -106,9 +108,10 @@ class PokerGame extends BaseGame {
         // Set current player to after big blind
         const bbIndex = this._getPositionAfter(this._getPositionAfter(this.dealerIndex));
         this.currentPlayerIndex = this._getPositionAfter(bbIndex);
-        this.lastRaiserIndex = bbIndex; // BB is the last raiser initially
+        this.lastRaiserIndex = -1; // No raiser yet — BB gets their option
+        this.bigBlindHasOption = true; // BB must still get a chance to raise
 
-        logger.info('POKER', `Hand #${this.handNumber} started. Dealer: ${this.players[this.dealerIndex].name}`);
+        logger.info('POKER', `[${this.roomId}] Hand #${this.handNumber} started. Dealer: ${this.players[this.dealerIndex].name}`);
     }
 
     _advanceDealer() {
@@ -175,6 +178,11 @@ class PokerGame extends BaseGame {
 
         const toCall = this.currentBet - ps.currentBet;
         let result = {};
+
+        // If this player is the big blind acting for the first time, clear the option flag
+        if (this.bigBlindHasOption) {
+            this.bigBlindHasOption = false;
+        }
 
         switch (action.action) {
             case 'fold':
@@ -246,7 +254,7 @@ class PokerGame extends BaseGame {
         ps.allIn = false;
         ps.isActive = true; // Will be dealt in next hand
 
-        logger.info('POKER', `Player ${this.players[playerIndex].name} bought in for ${this.startingChips}`);
+        logger.info('POKER', `[${this.roomId}] Player ${this.players[playerIndex].name} bought in for ${this.startingChips}`);
 
         return {
             success: true,
@@ -289,6 +297,9 @@ class PokerGame extends BaseGame {
 
         if (activePlayers.length === 0) return true;
 
+        // Big blind still has their option to raise — round is NOT complete yet
+        if (this.bigBlindHasOption) return false;
+
         // All active players must have matched the current bet
         const allMatched = activePlayers.every(p => {
             return this.playerStates[p.id].currentBet === this.currentBet;
@@ -322,13 +333,22 @@ class PokerGame extends BaseGame {
         return false;
     }
 
+    _revealRemainingCards() {
+        // Fill community cards all the way to 5 (flop=3, turn=4, river=5)
+        const needed = 5 - this.communityCards.length;
+        if (needed > 0) {
+            this.communityCards.push(...this.deck.deal(needed));
+        }
+    }
+
     _advancePhase() {
         // Distribute current bets into pots before resetting them
         this._distributeBetsToPots();
 
         const phaseIndex = PHASES.indexOf(this.phase);
         if (phaseIndex >= 3) {
-            // After river, go to showdown
+            // After river, go to showdown — reveal all cards first
+            this._revealRemainingCards();
             this.phase = 'showdown';
             this._resolveShowdown();
             return;
@@ -343,6 +363,7 @@ class PokerGame extends BaseGame {
         this.currentBet = 0;
         this.lastRaiserIndex = -1;
         this.roundActions = 0;
+        this.bigBlindHasOption = false; // Only relevant in preflop
 
         // Deal community cards
         switch (this.phase) {
@@ -377,7 +398,7 @@ class PokerGame extends BaseGame {
         }
         this.currentPlayerIndex = firstToAct;
 
-        logger.info('POKER', `Phase: ${this.phase}, Community: ${this.communityCards.map(c => `${c.rank}${c.suit[0]}`).join(' ')}`);
+        logger.info('POKER', `[${this.roomId}] Phase: ${this.phase}, Community: ${this.communityCards.map(c => `${c.rank}${c.suit[0]}`).join(' ')}`);
     }
 
     _distributeBetsToPots() {
@@ -437,6 +458,9 @@ class PokerGame extends BaseGame {
     }
 
     _resolveWinner(winners) {
+        // Reveal all remaining community cards before ending the hand
+        this._revealRemainingCards();
+
         this.phase = 'showdown';
         // If only one player remains, they win the entire pot (which is the sum of all current bets)
         // This is a special case where no showdown evaluation is needed.
@@ -444,6 +468,9 @@ class PokerGame extends BaseGame {
 
         // First, distribute current bets into pots
         this._distributeBetsToPots();
+
+        // Clear any showdown results from previous hands so they don't bleed through
+        this.showdownResults = [];
 
         // Now, resolve the pots. Since there's only one winner, they take all.
         const winnerPlayer = winners[0];
@@ -471,7 +498,7 @@ class PokerGame extends BaseGame {
             hand: 'Winner by fold',
         }];
 
-        logger.info('POKER', `Winner: ${this.winners.map(w => w.name).join(', ')} wins ${totalWinAmount}`);
+        logger.info('POKER', `[${this.roomId}] Winner: ${this.winners.map(w => w.name).join(', ')} wins ${totalWinAmount}`);
     }
 
     _resolveShowdown() {
@@ -587,7 +614,7 @@ class PokerGame extends BaseGame {
             });
         }
 
-        logger.info('POKER', `Showdown! Winners: ${this.winners.map(w => `${w.name} (${w.amount})`).join(', ')}`);
+        logger.info('POKER', `[${this.roomId}] Showdown! Winners: ${this.winners.map(w => `${w.name} (${w.amount})`).join(', ')}`);
     }
 
     getStateForPlayer(playerId) {

@@ -155,7 +155,7 @@ class RoomManager {
         if (room.players.length < 2) return { error: 'Need at least 2 players' };
 
         const GameClass = GAME_TYPES[room.gameType];
-        room.game = new GameClass(room.players, room.options);
+        room.game = new GameClass(room.players, { ...room.options, roomId });
         room.game.start();
         room.status = 'playing';
 

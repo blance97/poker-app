@@ -8,13 +8,12 @@ import Card from './Card';
 import { formatChips } from '../utils/cardUtils';
 import { soundEngine } from '../utils/soundUtils';
 
-// Returns { text, type } or null
+// Only label positions that matter to beginners (D chip handles Dealer)
 function getPositionLabel(posFromDealer, numPlayers) {
     if (numPlayers <= 2) {
-        if (posFromDealer === 0) return { text: 'Dealer', type: 'dealer' };
+        if (posFromDealer === 0) return { text: 'Small Blind', type: 'sb' };
         return { text: 'Big Blind', type: 'bb' };
     }
-    if (posFromDealer === 0) return { text: 'Dealer', type: 'dealer' };
     if (posFromDealer === 1) return { text: 'Small Blind', type: 'sb' };
     if (posFromDealer === 2) return { text: 'Big Blind', type: 'bb' };
     return null;
@@ -97,7 +96,6 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         const prevHand = prevHandNumberRef.current;
 
         if (prevHand !== null && prevHand !== gameState.handNumber) {
-            // New hand started
             soundEngine.playCardDeal();
             if (gameState.blindsJustIncreased) {
                 soundEngine.playBlindsUp();
@@ -140,9 +138,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
 
     const handleAction = useCallback((action) => {
         socket.emit('game:action', action, (result) => {
-            if (result.error) {
-                console.error('Action error:', result.error);
-            }
+            if (result.error) console.error('Action error:', result.error);
         });
     }, [socket]);
 
@@ -150,9 +146,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         setShowResults(false);
         setActionLog([]);
         socket.emit('game:newHand', (result) => {
-            if (result.error) {
-                console.error('New hand error:', result.error);
-            }
+            if (result.error) console.error('New hand error:', result.error);
         });
     }, [socket]);
 
@@ -165,14 +159,11 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     }, [socket]);
 
     const handleLeave = useCallback(() => {
-        socket.emit('room:leave', () => {
-            onLeave();
-        });
+        socket.emit('room:leave', () => { onLeave(); });
     }, [socket, onLeave]);
 
     const handleMuteToggle = useCallback(() => {
-        const newMuted = soundEngine.toggle();
-        setMuted(newMuted);
+        setMuted(soundEngine.toggle());
     }, []);
 
     if (!gameState) {
@@ -199,7 +190,6 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         }
     }
 
-    // Position labels relative to dealer
     const positionLabels = arrangedPlayers.map((p, i) => {
         if (!p) return null;
         const originalIndex = (myIndex + i) % numPlayers;
@@ -235,12 +225,12 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         onClick={() => setHandicapMode(!handicapMode)}
                         title="Toggle hand helper"
                     >
-                        {handicapMode ? '🧠 ON' : '🧠 Helper'}
+                        🧠
                     </button>
                     <button
                         className={`game-table__mute-btn ${muted ? 'game-table__mute-btn--muted' : ''}`}
                         onClick={handleMuteToggle}
-                        title={muted ? 'Unmute sounds' : 'Mute sounds'}
+                        title={muted ? 'Unmute' : 'Mute'}
                     >
                         {muted ? '🔇' : '🔊'}
                     </button>
@@ -264,9 +254,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
 
             {/* Blinds increase notification */}
             {showBlindsNotif && (
-                <div className="blinds-notif">
-                    📈 {blindsText}
-                </div>
+                <div className="blinds-notif">📈 {blindsText}</div>
             )}
 
             {/* Main table area */}
@@ -288,70 +276,68 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                     <div className="game-table__pot">
                         <span className="game-table__pot-label">POT</span>
                         <span className="game-table__pot-amount">{formatChips(gameState.pot)}</span>
-                        {gameState.pots && gameState.pots.length > 1 && (
-                            <div className="game-table__side-pots">
-                                {gameState.pots.map((pot, i) => (
-                                    <div key={i} className="game-table__side-pot-entry">
-                                        <span className="game-table__side-pot-label">{i === 0 ? 'Main' : `Side ${i}`}</span>
-                                        <span className="game-table__side-pot-value">{formatChips(pot.amount)}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        {(() => {
+                            const activePlayers = gameState.players.filter(p => p.isActive && !p.folded);
+                            return gameState.pots && gameState.pots.length > 1 && activePlayers.length >= 2 && (
+                                <div className="game-table__side-pots">
+                                    {gameState.pots.map((pot, i) => (
+                                        <div key={i} className="game-table__side-pot-entry">
+                                            <span className="game-table__side-pot-label">{i === 0 ? 'Main' : `Side ${i}`}</span>
+                                            <span className="game-table__side-pot-value">{formatChips(pot.amount)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                     <div className="game-table__community">
                         {gameState.communityCards.map((card, i) => (
-                            <Card key={i} card={card} dealDelay={i * 0.1} />
+                            <Card key={`${gameState.phase}-${i}`} card={card} dealDelay={i * 0.12} />
                         ))}
                         {Array.from({ length: 5 - gameState.communityCards.length }).map((_, i) => (
                             <div key={`empty-${i}`} className="card card--placeholder"></div>
                         ))}
                     </div>
                 </div>
-
-                {/* Winner announcement */}
-                {showResults && gameState.winners && (
-                    <div className="game-table__results">
-                        <div className="game-table__results-card">
-                            <h3>{gameState.winners.length > 1 ? '🤝 Split Pot!' : '🏆 Winner!'}</h3>
-                            {gameState.winners.map((w, i) => (
-                                <div key={i} className="game-table__winner">
-                                    <span className="game-table__winner-name">{w.name}</span>
-                                    <span className="game-table__winner-hand">{w.hand}</span>
-                                    <span className="game-table__winner-amount">+{formatChips(w.amount)}</span>
-                                </div>
-                            ))}
-                            {gameState.communityCards && gameState.communityCards.length > 0 && (
-                                <div className="game-table__results-board">
-                                    <div className="game-table__results-board-label">Board</div>
-                                    <div className="game-table__results-board-cards">
-                                        {gameState.communityCards.map((card, i) => (
-                                            <Card key={i} card={card} />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {gameState.showdownResults && (
-                                <div className="game-table__showdown-hands">
-                                    {gameState.showdownResults.map((r, i) => (
-                                        <div key={i} className="game-table__showdown-player">
-                                            <span>{r.name}: {r.hand}</span>
-                                            <div className="game-table__showdown-cards">
-                                                {r.holeCards.map((c, j) => (
-                                                    <Card key={j} card={c} small />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <button className="game-table__next-hand-btn" onClick={handleNewHand}>
-                                Deal Next Hand →
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {/* Winner banner — outside the felt, between felt and action bar, no z-index conflicts */}
+            {showResults && gameState.winners && (
+                <div className="game-table__winner-banner">
+                    <div className="game-table__winner-banner-title">
+                        {gameState.winners.length > 1 ? '🤝 Split Pot!' : '🏆 Winner!'}
+                    </div>
+                    <div className="game-table__winner-banner-players">
+                        {gameState.winners.map((w, i) => (
+                            <div key={i} className="game-table__winner-banner-row">
+                                <span className="game-table__winner-name">{w.name}</span>
+                                <span className="game-table__winner-hand">
+                                    {w.hand === 'Winner by fold' ? 'Opponents folded' : w.hand}
+                                </span>
+                                <span className="game-table__winner-amount">+{formatChips(w.amount)}</span>
+                            </div>
+                        ))}
+                    </div>
+                    {gameState.showdownResults && gameState.showdownResults.length > 0
+                        && gameState.winners.every(w => w.hand !== 'Winner by fold') && (
+                            <div className="game-table__showdown-hands">
+                                {gameState.showdownResults.map((r, i) => (
+                                    <div key={i} className="game-table__showdown-player">
+                                        <span>{r.name}: {r.hand}</span>
+                                        <div className="game-table__showdown-cards">
+                                            {r.holeCards.map((c, j) => (
+                                                <Card key={j} card={c} small />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    <button className="game-table__next-hand-btn" onClick={handleNewHand}>
+                        Deal Next Hand →
+                    </button>
+                </div>
+            )}
 
             {/* Action bar */}
             <ActionBar gameState={gameState} onAction={handleAction} />
@@ -368,7 +354,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
 
             {/* Action log */}
             <div className="game-table__log">
-                {actionLog.slice(-5).map((a, i) => (
+                {actionLog.slice(-4).map((a, i) => (
                     <div key={i} className="game-table__log-entry">
                         <span className={`game-table__log-action game-table__log-action--${a.action}`}>
                             {a.isCPU ? '🤖' : ''} {a.playerName} {a.action}s{a.amount ? ` (${formatChips(a.amount)})` : ''}

@@ -201,10 +201,10 @@ io.on('connection', (socket) => {
         broadcastGameState(player.roomId);
 
         if (result.isRoundOver) {
-            // Wait then allow new hand
+            // Give 5s to see the board before prompting for next hand
             setTimeout(() => {
                 io.to(player.roomId).emit('game:roundOver');
-            }, 500);
+            }, 5000);
         } else {
             // Process CPU turns
             setTimeout(() => processCPUTurns(player.roomId), 1200);
@@ -358,9 +358,10 @@ function processCPUTurns(roomId) {
     broadcastGameState(roomId);
 
     if (result.isRoundOver) {
+        // Give 5s to see the board before prompting for next hand
         setTimeout(() => {
             io.to(roomId).emit('game:roundOver');
-        }, 500);
+        }, 5000);
     } else {
         // Continue processing CPU turns
         setTimeout(() => processCPUTurns(roomId), 1200);
