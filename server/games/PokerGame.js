@@ -26,6 +26,7 @@ class PokerGame extends BaseGame {
         this.roundActions = 0;
         this.bigBlindHasOption = false;
         this.winners = null;
+        this.shownCards = {};
         this.handNumber = 0;
 
         // Initialize player state
@@ -73,6 +74,7 @@ class PokerGame extends BaseGame {
         this.lastRaiserIndex = -1;
         this.roundActions = 0;
         this.winners = null;
+        this.shownCards = {};
         this.phase = 'preflop';
 
         // Reset player states for new hand
@@ -498,7 +500,21 @@ class PokerGame extends BaseGame {
             hand: 'Winner by fold',
         }];
 
+        // CPUs automatically show their hole cards
+        for (const p of this.players) {
+            if (p.isCPU && this.playerStates[p.id].holeCards.length > 0) {
+                this.shownCards[p.id] = this.playerStates[p.id].holeCards;
+            }
+        }
+
         logger.info('POKER', `[${this.roomId}] Winner: ${this.winners.map(w => w.name).join(', ')} wins ${totalWinAmount}`);
+    }
+
+    showCards(playerId) {
+        const pState = this.playerStates[playerId];
+        if (!pState || !pState.holeCards || pState.holeCards.length === 0) return false;
+        this.shownCards[playerId] = pState.holeCards;
+        return true;
     }
 
     _resolveShowdown() {
@@ -692,8 +708,13 @@ class PokerGame extends BaseGame {
                         : pState.holeCards.map(() => ({ suit: 'hidden', rank: 'hidden' })),
                 };
             }),
+            gameOver: this.status === 'finished',
             winners: this.winners,
             showdownResults: this.phase === 'showdown' ? this.showdownResults : null,
+            shownCards: Object.entries(this.shownCards || {}).map(([pid, cards]) => {
+                const p = this.players.find(pl => pl.id === pid);
+                return { playerId: pid, name: p ? p.name : 'Unknown', holeCards: cards };
+            }),
         };
     }
 

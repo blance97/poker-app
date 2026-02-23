@@ -196,6 +196,14 @@ class RoomManager {
         return room.game.getStateForPlayer(playerId);
     }
 
+    showCards(roomId, playerId) {
+        const room = this.rooms.get(roomId);
+        if (!room || !room.game) return { error: 'No active game' };
+        const success = room.game.showCards(playerId);
+        if (!success) return { error: 'Cannot show cards' };
+        return { success: true };
+    }
+
     getCPUAction(roomId) {
         const room = this.rooms.get(roomId);
         if (!room || !room.game) return null;

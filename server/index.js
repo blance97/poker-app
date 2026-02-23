@@ -234,6 +234,17 @@ io.on('connection', (socket) => {
         callback({ state });
     });
 
+    socket.on('game:showCards', (callback) => {
+        const player = connectedPlayers.get(socket.id);
+        if (!player || !player.roomId) return callback({ error: 'Not in a room' });
+
+        const result = roomManager.showCards(player.roomId, player.id);
+        if (result.error) return callback({ error: result.error });
+
+        callback({ success: true });
+        broadcastGameState(player.roomId);
+    });
+
     socket.on('game:rebuy', (callback) => {
         const player = connectedPlayers.get(socket.id);
         if (!player || !player.roomId) return callback({ error: 'Not in a room' });

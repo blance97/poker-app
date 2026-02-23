@@ -1902,6 +1902,14 @@ body {
 .chat-box__toggle-icon {
   font-size: 10px;
   opacity: 0.6;
+  /* Only visible on mobile — on desktop the body is always shown */
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-box__toggle-icon {
+    display: inline;
+  }
 }
 
 /* On desktop the body is always visible; on mobile it's collapsed by default */
@@ -2057,8 +2065,10 @@ body {
     padding: 3px 10px;
   }
 
-  .game-table__hand {
-    font-size: 11px;
+  /* Hide non-critical topbar info on mobile */
+  .game-table__hand,
+  .game-table__blinds {
+    display: none;
   }
 
   .game-table__my-chips {
@@ -2092,71 +2102,57 @@ body {
     display: none;
   }
 
+  /* Hide quick bet presets on mobile to save vertical space */
+  .action-bar__quick-bets {
+    display: none;
+  }
+
+  /* Hide pot odds badge — call button too narrow */
+  .action-bar__pot-odds {
+    display: none;
+  }
+
+  .action-bar__timer-label {
+    display: none;
+  }
+
+  /* Fold + Call/Check + All In share one row (All In is before raise in DOM) */
   .action-bar__buttons {
     gap: 6px;
     flex-wrap: wrap;
   }
 
-  /* Fold and Check/Call take half-width each; Raise takes full width */
   .action-bar__btn--fold,
   .action-bar__btn--check,
-  .action-bar__btn--call {
+  .action-bar__btn--call,
+  .action-bar__btn--allin {
     flex: 1;
-    min-width: 80px;
+    min-width: 0;
     min-height: 52px;
-    padding: 12px 8px;
+    padding: 10px 4px;
     font-size: 13px;
   }
 
-  .action-bar__btn--allin {
-    flex: 1;
-    min-width: 80px;
-    min-height: 52px;
-    padding: 12px 8px;
-    font-size: 12px;
-  }
-
+  /* Raise takes full width on its own row; slider + button side by side */
   .action-bar__raise {
     width: 100%;
-    flex-direction: column;
-    gap: 6px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 
   .action-bar__slider {
-    width: 100%;
+    flex: 1;
+    width: auto;
   }
 
   .action-bar__btn--raise {
-    width: 100%;
-    min-height: 52px;
-    padding: 12px;
-    font-size: 13px;
-  }
-
-  .action-bar__quick-bets {
-    gap: 5px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .action-bar__quick-bets::-webkit-scrollbar {
-    display: none;
-  }
-
-  .action-bar__quick-btn {
+    width: auto;
     flex-shrink: 0;
-    padding: 8px 16px;
+    min-height: 44px;
+    padding: 10px 12px;
     font-size: 12px;
-    min-height: 40px;
-    touch-action: manipulation;
-  }
-
-  .action-bar__timer-label {
-    display: none;
+    white-space: nowrap;
   }
 
   /* Helper toggle is now inline in topbar, no override needed */
@@ -2320,12 +2316,13 @@ body {
   .action-bar__btn--allin {
     font-size: 11px;
     min-height: 48px;
-    padding: 10px 6px;
+    padding: 10px 2px;
   }
 
   .action-bar__btn--raise {
     font-size: 11px;
-    min-height: 48px;
+    min-height: 40px;
+    padding: 8px 8px;
   }
 
   /* Slider thumb bigger for touch */
@@ -2517,4 +2514,307 @@ body {
 .chat-box__emote-btn:hover {
   transform: scale(1.3);
   background: rgba(255, 255, 255, 0.08);
+}
+/* ============================================================
+   WINNER CELEBRATION OVERLAY
+   ============================================================ */
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: overlayFadeIn 0.3s ease;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.winner-overlay__card {
+  position: relative;
+  background: linear-gradient(160deg, #111827 0%, #0a0e17 100%);
+  border: 2px solid var(--accent-gold);
+  border-radius: var(--radius-lg);
+  padding: 20px 20px 16px;
+  max-width: 440px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  text-align: center;
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.15),
+    0 0 60px rgba(245, 158, 11, 0.2),
+    0 32px 64px rgba(0, 0, 0, 0.6);
+  animation: cardPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes cardPop {
+  from { opacity: 0; transform: scale(0.75) translateY(30px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Confetti dots */
+.winner-overlay__confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.winner-overlay__dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: -10px;
+  left: calc(var(--i) * 5.88%);
+  background: hsl(calc(var(--i) * 22deg), 90%, 65%);
+  animation: confettiFall calc(1.4s + var(--i) * 0.07s) ease-in calc(var(--i) * 0.05s) both;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(340px) rotate(720deg) scale(0.6); opacity: 0; }
+}
+
+.winner-overlay__trophy {
+  font-size: 44px;
+  display: block;
+  margin-bottom: 2px;
+  animation: trophyBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s both;
+}
+
+@keyframes trophyBounce {
+  from { transform: scale(0) rotate(-15deg); }
+  to   { transform: scale(1) rotate(0deg); }
+}
+
+.winner-overlay__title {
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-gold), #fbbf24, var(--accent-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10px;
+  animation: slideUp 0.4s ease 0.25s both;
+}
+
+.winner-overlay__winner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 10px;
+  animation: slideUp 0.4s ease 0.35s both;
+}
+
+.winner-overlay__winner-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.winner-overlay__name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.winner-overlay__hand {
+  font-size: 12px;
+  color: var(--accent-emerald);
+  font-weight: 600;
+}
+
+.winner-overlay__amount {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent-gold);
+}
+
+.winner-overlay__board {
+  margin: 10px 0 4px;
+  animation: slideUp 0.4s ease 0.4s both;
+}
+
+.winner-overlay__board-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.winner-overlay__board-cards {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.winner-overlay__hands {
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: slideUp 0.4s ease 0.45s both;
+}
+
+.winner-overlay__hand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-sm);
+}
+
+.winner-overlay__hand-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.winner-overlay__hand-name strong {
+  color: var(--text-primary);
+}
+
+.winner-overlay__hand-cards {
+  display: flex;
+  gap: 4px;
+}
+
+/* Game over standings */
+.winner-overlay__gameover {
+  margin: 10px 0 12px;
+  animation: slideUp 0.4s ease 0.35s both;
+}
+
+.winner-overlay__gameover-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.winner-overlay__standing-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+}
+
+.winner-overlay__standing-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 24px;
+}
+
+.winner-overlay__standing-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.winner-overlay__standing-chips {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.winner-overlay__show-cards-btn {
+  margin-top: 12px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: var(--radius);
+  color: var(--accent-blue);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 24px;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-fast);
+  touch-action: manipulation;
+  animation: slideUp 0.4s ease 0.45s both;
+}
+
+.winner-overlay__show-cards-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: var(--accent-blue);
+}
+
+.winner-overlay__next-btn {
+  margin-top: 14px;
+  background: linear-gradient(135deg, var(--accent-gold), #d97706);
+  border: none;
+  border-radius: var(--radius);
+  color: #0a0e17;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 12px 36px;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-fast);
+  touch-action: manipulation;
+  animation: slideUp 0.4s ease 0.5s both;
+}
+
+.winner-overlay__next-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.winner-overlay__hint {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  animation: slideUp 0.4s ease 0.55s both;
+}
+
+@media (max-width: 768px) {
+  .winner-overlay__card {
+    padding: 16px 16px 14px;
+    max-height: 94vh;
+  }
+
+  .winner-overlay__trophy {
+    font-size: 36px;
+  }
+
+  .winner-overlay__title {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .winner-overlay__name {
+    font-size: 16px;
+  }
+
+  .winner-overlay__amount {
+    font-size: 17px;
+  }
 }

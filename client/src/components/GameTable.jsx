@@ -37,7 +37,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     useEffect(() => {
         const handleStateUpdate = (state) => {
             setGameState(state);
-            if (state?.phase === 'showdown') {
+            if (state?.phase === 'showdown' || state?.gameOver) {
                 setShowResults(true);
             }
         };
@@ -161,6 +161,12 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     const handleLeave = useCallback(() => {
         socket.emit('room:leave', () => { onLeave(); });
     }, [socket, onLeave]);
+
+    const handleShowCards = useCallback(() => {
+        socket.emit('game:showCards', (result) => {
+            if (result.error) console.error('Show cards error:', result.error);
+        });
+    }, [socket]);
 
     const handleMuteToggle = useCallback(() => {
         setMuted(soundEngine.toggle());
@@ -301,30 +307,59 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 </div>
             </div>
 
-            {/* Winner banner — outside the felt, between felt and action bar, no z-index conflicts */}
+            {/* Winner celebration overlay */}
             {showResults && gameState.winners && (
-                <div className="game-table__winner-banner">
-                    <div className="game-table__winner-banner-title">
-                        {gameState.winners.length > 1 ? '🤝 Split Pot!' : '🏆 Winner!'}
-                    </div>
-                    <div className="game-table__winner-banner-players">
+                <div className="winner-overlay" onClick={gameState.gameOver ? undefined : handleNewHand}>
+                    <div className="winner-overlay__card" onClick={e => e.stopPropagation()}>
+                        {/* Confetti dots (CSS animated) */}
+                        <div className="winner-overlay__confetti" aria-hidden="true">
+                            {Array.from({ length: 18 }).map((_, i) => (
+                                <span key={i} className="winner-overlay__dot" style={{ '--i': i }} />
+                            ))}
+                        </div>
+
+                        <div className="winner-overlay__trophy">
+                            {gameState.winners.length > 1 ? '🤝' : '🏆'}
+                        </div>
+
+                        <h2 className="winner-overlay__title">
+                            {gameState.winners.length > 1 ? 'Split Pot!' : 'Winner!'}
+                        </h2>
+
                         {gameState.winners.map((w, i) => (
-                            <div key={i} className="game-table__winner-banner-row">
-                                <span className="game-table__winner-name">{w.name}</span>
-                                <span className="game-table__winner-hand">
+                            <div key={i} className="winner-overlay__winner">
+                                <div className="winner-overlay__winner-top">
+                                    <span className="winner-overlay__name">{w.name}</span>
+                                    <span className="winner-overlay__amount">+{formatChips(w.amount)}</span>
+                                </div>
+                                <span className="winner-overlay__hand">
                                     {w.hand === 'Winner by fold' ? 'Opponents folded' : w.hand}
                                 </span>
-                                <span className="game-table__winner-amount">+{formatChips(w.amount)}</span>
                             </div>
                         ))}
-                    </div>
-                    {gameState.showdownResults && gameState.showdownResults.length > 0
-                        && gameState.winners.every(w => w.hand !== 'Winner by fold') && (
-                            <div className="game-table__showdown-hands">
+
+                        {/* Board cards */}
+                        {gameState.communityCards && gameState.communityCards.length > 0 && (
+                            <div className="winner-overlay__board">
+                                <div className="winner-overlay__board-label">Board</div>
+                                <div className="winner-overlay__board-cards">
+                                    {gameState.communityCards.map((card, i) => (
+                                        <Card key={i} card={card} small />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Showdown hands (actual showdown) */}
+                        {gameState.showdownResults && gameState.showdownResults.length > 0
+                            && gameState.winners.every(w => w.hand !== 'Winner by fold') && (
+                            <div className="winner-overlay__hands">
                                 {gameState.showdownResults.map((r, i) => (
-                                    <div key={i} className="game-table__showdown-player">
-                                        <span>{r.name}: {r.hand}</span>
-                                        <div className="game-table__showdown-cards">
+                                    <div key={i} className="winner-overlay__hand-row">
+                                        <span className="winner-overlay__hand-name">
+                                            {r.name}: <strong>{r.hand}</strong>
+                                        </span>
+                                        <div className="winner-overlay__hand-cards">
                                             {r.holeCards.map((c, j) => (
                                                 <Card key={j} card={c} small />
                                             ))}
@@ -333,9 +368,69 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                                 ))}
                             </div>
                         )}
-                    <button className="game-table__next-hand-btn" onClick={handleNewHand}>
-                        Deal Next Hand →
-                    </button>
+
+                        {/* Shown cards (fold win — optional reveal) */}
+                        {gameState.winners.every(w => w.hand === 'Winner by fold') && (
+                            <>
+                                {gameState.shownCards && gameState.shownCards.length > 0 && (
+                                    <div className="winner-overlay__hands">
+                                        <div className="winner-overlay__board-label">Cards Shown</div>
+                                        {gameState.shownCards.map((entry, i) => (
+                                            <div key={i} className="winner-overlay__hand-row">
+                                                <span className="winner-overlay__hand-name">{entry.name}</span>
+                                                <div className="winner-overlay__hand-cards">
+                                                    {entry.holeCards.map((c, j) => (
+                                                        <Card key={j} card={c} small />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {gameState.myState?.holeCards?.length > 0
+                                    && !gameState.shownCards?.some(s => s.playerId === player.id) && (
+                                    <button
+                                        className="winner-overlay__show-cards-btn"
+                                        onClick={handleShowCards}
+                                    >
+                                        Show My Cards
+                                    </button>
+                                )}
+                            </>
+                        )}
+
+                        {gameState.gameOver ? (
+                            <>
+                                <div className="winner-overlay__gameover">
+                                    <div className="winner-overlay__gameover-title">— Final Standings —</div>
+                                    {[...gameState.players]
+                                        .sort((a, b) => b.chips - a.chips)
+                                        .map((p, i) => (
+                                            <div key={p.id} className="winner-overlay__standing-row">
+                                                <span className="winner-overlay__standing-rank">#{i + 1}</span>
+                                                <span className="winner-overlay__standing-name">
+                                                    {p.isCPU && '🤖'} {p.name}
+                                                </span>
+                                                <span className="winner-overlay__standing-chips">
+                                                    {formatChips(p.chips)}
+                                                </span>
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                                <button className="winner-overlay__next-btn" onClick={handleLeave}>
+                                    Leave Table
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button className="winner-overlay__next-btn" onClick={handleNewHand}>
+                                    Deal Next Hand →
+                                </button>
+                                <p className="winner-overlay__hint">or tap outside to dismiss</p>
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
 

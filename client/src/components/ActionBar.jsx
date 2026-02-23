@@ -147,8 +147,24 @@ export default function ActionBar({ gameState, onAction }) {
                         onClick={() => doAction({ action: 'call' }, () => soundEngine.playChip())}
                     >
                         Call {formatChips(toCall)}
-                        {potOdds > 0 && <span className="action-bar__pot-odds">{potOdds}%</span>}
+                        {potOdds > 0 && (
+                            <span
+                                className="action-bar__pot-odds"
+                                title={`You're paying ${potOdds}% of the total pot to call. Lower = better value.`}
+                            >
+                                {potOdds}%
+                            </span>
+                        )}
                         {' '}<kbd>C</kbd>
+                    </button>
+                )}
+
+                {myState.chips > 0 && (
+                    <button
+                        className="action-bar__btn action-bar__btn--allin"
+                        onClick={() => doAction({ action: 'raise', amount: maxRaise }, () => soundEngine.playAllIn())}
+                    >
+                        All In <kbd>A</kbd>
                     </button>
                 )}
 
@@ -168,15 +184,6 @@ export default function ActionBar({ gameState, onAction }) {
                         Raise to {formatChips(effectiveRaise)} <kbd>R</kbd>
                     </button>
                 </div>
-
-                {myState.chips > 0 && (
-                    <button
-                        className="action-bar__btn action-bar__btn--allin"
-                        onClick={() => doAction({ action: 'raise', amount: maxRaise }, () => soundEngine.playAllIn())}
-                    >
-                        All In ({formatChips(myState.chips)}) <kbd>A</kbd>
-                    </button>
-                )}
             </div>
         </div>
     );
