@@ -754,6 +754,35 @@ class PokerGame extends BaseGame {
     }
 
     /**
+     * Add a player to an in-progress game. They sit out the current hand
+     * and are dealt in starting from the next one.
+     *
+     * NOTE: room.players and game.players share the same array reference
+     * (set in BaseGame constructor), so joinRoom() already pushed the player
+     * into this.players. We only need to create the playerState here.
+     */
+    addPlayer(player) {
+        if (this.playerStates[player.id]) return false; // Already fully registered
+
+        // Ensure player is in this.players (handles standalone addPlayer calls)
+        if (!this.players.find(p => p.id === player.id)) {
+            this.players.push(player);
+        }
+
+        this.playerStates[player.id] = {
+            chips: this.startingChips,
+            holeCards: [],
+            currentBet: 0,
+            totalBetThisRound: 0,
+            folded: true,   // sits out current hand
+            allIn: false,
+            isActive: true, // dealt in next hand
+        };
+        logger.info('POKER', `[${this.roomId}] Player ${player.name} joined mid-game`);
+        return true;
+    }
+
+    /**
      * Get CPU decision for the current player
      */
     getCPUAction() {

@@ -55,14 +55,18 @@ export default function Lobby({ socket, player, onJoinGame }) {
 
     const joinRoom = (roomId) => {
         socket.emit('room:join', roomId, (result) => {
-            if (result.room) {
+            if (result.error) return;
+            try {
+                const s = JSON.parse(sessionStorage.getItem('poker_session') || '{}');
+                s.roomId = result.room.id;
+                sessionStorage.setItem('poker_session', JSON.stringify(s));
+            } catch (e) { /* ignore */ }
+
+            if (result.room.status === 'playing') {
+                // Jump straight into the game
+                onJoinGame(result.room.id);
+            } else {
                 setCurrentRoom(result.room);
-                try {
-                    const s = JSON.parse(sessionStorage.getItem('poker_session') || '{}');
-                    s.roomId = result.room.id;
-                    s.view = 'lobby';
-                    sessionStorage.setItem('poker_session', JSON.stringify(s));
-                } catch (e) { /* ignore */ }
             }
         });
     };
@@ -226,9 +230,9 @@ export default function Lobby({ socket, player, onJoinGame }) {
                                 <button
                                     className="lobby__btn lobby__btn--join"
                                     onClick={() => joinRoom(room.id)}
-                                    disabled={room.status !== 'waiting'}
+                                    disabled={room.status === 'finished' || room.playerCount >= room.maxPlayers}
                                 >
-                                    Join
+                                    {room.status === 'playing' ? 'Join Game' : 'Join'}
                                 </button>
                             </div>
                         ))}

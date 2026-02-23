@@ -123,6 +123,11 @@ io.on('connection', (socket) => {
         callback(result);
         io.to(roomId).emit('room:updated', result.room);
         io.emit('rooms:updated', roomManager.listRooms());
+
+        // If joining a live game, push state so the client transitions to the game view
+        if (result.room.status === 'playing') {
+            broadcastGameState(roomId);
+        }
     });
 
     socket.on('room:leave', (callback) => {

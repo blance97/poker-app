@@ -49,11 +49,37 @@ class RoomManager {
     joinRoom(roomId, player) {
         const room = this.rooms.get(roomId);
         if (!room) return { error: 'Room not found' };
-        if (room.status === 'playing') return { error: 'Game already in progress' };
-        if (room.players.length >= room.maxPlayers) return { error: 'Room is full' };
+        if (room.status === 'finished') return { error: 'Game has ended' };
         if (room.players.find(p => p.id === player.id)) return { error: 'Already in room' };
 
-        room.players.push({ id: player.id, name: player.name, isCPU: false });
+        // If a non-CPU player with the same name is already here (e.g. disconnected and
+        // rejoining before the 10s timeout clears them), treat it as a mid-join reconnect
+        const sameNameEntry = room.players.find(p => p.name === player.name && !p.isCPU && p.id !== player.id);
+        if (sameNameEntry && room.game) {
+            const oldId = sameNameEntry.id;
+            sameNameEntry.id = player.id;
+            if (room.hostId === oldId) room.hostId = player.id;
+
+            const gamePlayer = room.game.players.find(p => p.id === oldId);
+            if (gamePlayer) gamePlayer.id = player.id;
+            if (room.game.playerStates[oldId]) {
+                room.game.playerStates[player.id] = room.game.playerStates[oldId];
+                delete room.game.playerStates[oldId];
+            }
+            logger.info('ROOM', `${player.name} reconnected to room "${room.name}" via join`);
+            return { room: this._sanitizeRoom(room) };
+        }
+
+        if (room.players.length >= room.maxPlayers) return { error: 'Room is full' };
+
+        const roomPlayer = { id: player.id, name: player.name, isCPU: false };
+        room.players.push(roomPlayer);
+
+        // If game is in progress, create playerState (room.players and game.players share
+        // the same array reference, so push above already added them to game.players)
+        if (room.game) {
+            room.game.addPlayer(roomPlayer);
+        }
         logger.info('ROOM', `${player.name} joined room "${room.name}"`);
         return { room: this._sanitizeRoom(room) };
     }
