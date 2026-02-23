@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from './hooks/useSocket';
 import Lobby from './components/Lobby';
 import GameTable from './components/GameTable';
+import { loadProfile } from './utils/profileUtils';
 
 const SESSION_KEY = 'poker_session';
 
@@ -37,7 +38,8 @@ export default function App() {
         const session = loadSession();
         if (session && session.name && !player) {
             setReconnecting(true);
-            reconnect(session.name, session.roomId).then((result) => {
+            const avatar = loadProfile().avatar || 'default';
+            reconnect(session.name, session.roomId, avatar).then((result) => {
                 setReconnecting(false);
                 if (result && result.view) {
                     setCurrentRoomId(result.roomId || null);
@@ -72,7 +74,7 @@ export default function App() {
     const handleLogin = async (e) => {
         e.preventDefault();
         if (playerName.trim()) {
-            await setName(playerName.trim());
+            await setName(playerName.trim(), loadProfile().avatar || 'default');
             saveSession({ name: playerName.trim(), roomId: null, view: 'lobby' });
             setView('lobby');
         }

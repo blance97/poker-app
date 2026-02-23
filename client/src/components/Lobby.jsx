@@ -1,5 +1,7 @@
 // client/src/components/Lobby.jsx
 import { useState, useEffect } from 'react';
+import Profile from './Profile';
+import { loadProfile, getAvatarIcon } from '../utils/profileUtils';
 
 export default function Lobby({ socket, player, onJoinGame }) {
     const [rooms, setRooms] = useState([]);
@@ -8,6 +10,8 @@ export default function Lobby({ socket, player, onJoinGame }) {
     const [maxPlayers, setMaxPlayers] = useState(6);
     const [currentRoom, setCurrentRoom] = useState(null);
     const [cpuDifficulty, setCpuDifficulty] = useState('medium');
+    const [profile, setProfile] = useState(loadProfile);
+    const [showProfile, setShowProfile] = useState(false);
 
     useEffect(() => {
         // Fetch initial rooms
@@ -179,7 +183,14 @@ export default function Lobby({ socket, player, onJoinGame }) {
             <div className="lobby__header">
                 <h1>🃏 Game Lobby</h1>
                 <p className="lobby__subtitle">Welcome, <strong>{player.name}</strong></p>
+                <button className="lobby__profile-btn" onClick={() => setShowProfile(v => !v)}>
+                    {getAvatarIcon(profile)} ⭐ {profile.points || 0} pts
+                </button>
             </div>
+
+            {showProfile && (
+                <Profile profile={profile} onProfileChange={setProfile} onClose={() => setShowProfile(false)} />
+            )}
 
             <div className="lobby__actions">
                 <button className="lobby__btn lobby__btn--create" onClick={() => setShowCreate(!showCreate)}>

@@ -30,7 +30,7 @@ class RoomManager {
             gameType,
             status: 'waiting', // waiting | playing | finished
             maxPlayers: options.maxPlayers || 8,
-            players: [{ id: hostPlayer.id, name: hostPlayer.name, isCPU: false }],
+            players: [{ id: hostPlayer.id, name: hostPlayer.name, avatar: hostPlayer.avatar || 'default', isCPU: false }],
             game: null,
             options: {
                 smallBlind: options.smallBlind || 10,
@@ -72,7 +72,7 @@ class RoomManager {
 
         if (room.players.length >= room.maxPlayers) return { error: 'Room is full' };
 
-        const roomPlayer = { id: player.id, name: player.name, isCPU: false };
+        const roomPlayer = { id: player.id, name: player.name, avatar: player.avatar || 'default', isCPU: false };
         room.players.push(roomPlayer);
 
         // If game is in progress, create playerState (room.players and game.players share
@@ -170,7 +170,12 @@ class RoomManager {
         const room = this.rooms.get(roomId);
         if (!room) return { error: 'Room not found' };
 
-        room.players = room.players.filter(p => p.id !== cpuId);
+        if (room.game) {
+            // Use splice via game.removePlayer to keep the shared array reference intact
+            room.game.removePlayer(cpuId);
+        } else {
+            room.players = room.players.filter(p => p.id !== cpuId);
+        }
         return { room: this._sanitizeRoom(room) };
     }
 

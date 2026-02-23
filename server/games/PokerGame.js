@@ -407,55 +407,50 @@ class PokerGame extends BaseGame {
         // Collect all bets from this round
         const bets = [];
         for (const p of this.players) {
-            const bet = this.playerStates[p.id].currentBet;
+            const ps = this.playerStates[p.id];
+            const bet = ps.currentBet;
             if (bet > 0) {
-                bets.push({ id: p.id, amount: bet, isAllIn: this.playerStates[p.id].allIn });
+                bets.push({ id: p.id, amount: bet, isAllIn: ps.allIn });
             }
         }
 
         if (bets.length === 0) return;
 
-        // Sort unique bet amounts (levels)
-        const levels = [...new Set(bets.map(b => b.amount))].sort((a, b) => a - b);
+        const maxBet = Math.max(...bets.map(b => b.amount));
+
+        // Side pots only form when a player goes ALL-IN for LESS than the max bet.
+        // Folded players who posted a smaller blind don't create side pots.
+        const splitLevels = [...new Set(
+            bets.filter(b => b.isAllIn && b.amount < maxBet).map(b => b.amount)
+        )].sort((a, b) => a - b);
 
         let prevLevel = 0;
-        for (const level of levels) {
-            const potAmount = level - prevLevel;
-            const contributors = bets.filter(b => b.amount >= level);
+        for (const level of splitLevels) {
+            const segmentSize = level - prevLevel;
+            const inSegment = bets.filter(b => b.amount > prevLevel);
+            const potAmount = inSegment.reduce((sum, b) => sum + Math.min(b.amount - prevLevel, segmentSize), 0);
 
-            // Should we add to last pot or create new?
-            // If last pot has same contributors (or subset that can match), maybe merge?
-            // Simple approach: Always create new slice, merge later if needed (or just execute multiple pots)
-            // Smart approach: Reuse last pot if no one went all-in at prevLevel?
-
-            // Logic:
-            // 1. Calculate amount for this level from all eligible contributors.
-            // 2. See if any contributor is All-In at strictly less than this level? No, levels are sorted bets.
-            //    If level is 100, and someone went all-in for 100.
-            //    Then anyone taking part in level 100+ is contributing to this pot.
-            //    But if someone is all in at 100, they CANNOT contribute to >100.
-
-            // Actually, simplified:
-            // Create a pot for each segment.
-            // Segment 0 to Level 1.
-            // Segment Level 1 to Level 2.
-
-            const currentSegmentAmount = contributors.length * potAmount;
-            const eligiblePlayerIds = contributors.map(b => b.id);
-
-            // Check if we can merge with the last pot
-            // We can merge if the last pot exists AND the set of eligible players is identical
-            const lastPot = this.pots[this.pots.length - 1];
-            if (lastPot && JSON.stringify(lastPot.contributors.sort()) === JSON.stringify(eligiblePlayerIds.sort())) {
-                lastPot.amount += currentSegmentAmount;
-            } else {
-                this.pots.push({
-                    amount: currentSegmentAmount,
-                    contributors: eligiblePlayerIds,
-                    winners: []
-                });
-            }
+            this.pots.push({
+                amount: potAmount,
+                contributors: inSegment.map(b => b.id),
+                winners: [],
+            });
             prevLevel = level;
+        }
+
+        // All remaining bets (above the last split level) go into one final pot
+        const finalContributors = bets.filter(b => b.amount > prevLevel);
+        const finalAmount = finalContributors.reduce((sum, b) => sum + (b.amount - prevLevel), 0);
+
+        if (finalAmount > 0) {
+            const finalIds = finalContributors.map(b => b.id);
+            const lastPot = this.pots[this.pots.length - 1];
+            // Merge with last pot if same contributor set
+            if (lastPot && JSON.stringify([...lastPot.contributors].sort()) === JSON.stringify([...finalIds].sort())) {
+                lastPot.amount += finalAmount;
+            } else {
+                this.pots.push({ amount: finalAmount, contributors: finalIds, winners: [] });
+            }
         }
     }
 
@@ -694,6 +689,7 @@ class PokerGame extends BaseGame {
                 return {
                     id: p.id,
                     name: p.name,
+                    avatar: p.avatar || 'default',
                     isCPU: p.isCPU || false,
                     chips: pState.chips,
                     currentBet: pState.currentBet,
@@ -702,8 +698,9 @@ class PokerGame extends BaseGame {
                     isActive: pState.isActive,
                     isDealer: i === this.dealerIndex,
                     isCurrent: i === this.currentPlayerIndex,
-                    // Only show hole cards for the requesting player or at showdown
-                    holeCards: (p.id === playerId || this.phase === 'showdown')
+                    // Show hole cards for: requesting player, at showdown, or winners (reveal on fold-win too)
+                    holeCards: (p.id === playerId || this.phase === 'showdown' ||
+                        (this.winners && this.winners.some(w => w.playerId === p.id)))
                         ? pState.holeCards
                         : pState.holeCards.map(() => ({ suit: 'hidden', rank: 'hidden' })),
                 };
@@ -750,6 +747,44 @@ class PokerGame extends BaseGame {
             return false;
         }
         this._startNewHand();
+        return true;
+    }
+
+    /**
+     * Remove a player (CPU) from an in-progress game.
+     * They are folded immediately and removed from future hands.
+     * Uses splice so the shared room.players reference stays consistent.
+     */
+    removePlayer(playerId) {
+        const playerIndex = this.players.findIndex(p => p.id === playerId);
+        if (playerIndex === -1) return false;
+
+        const ps = this.playerStates[playerId];
+        const wasCurrentPlayer = playerIndex === this.currentPlayerIndex;
+
+        // Fold them out of the current hand first
+        if (ps) {
+            ps.folded = true;
+            ps.isActive = false;
+        }
+
+        // Remove from the shared players array (affects room.players too via reference)
+        this.players.splice(playerIndex, 1);
+        delete this.playerStates[playerId];
+
+        // Fix indices after the splice
+        if (this.dealerIndex > playerIndex) this.dealerIndex--;
+        if (this.dealerIndex >= this.players.length && this.players.length > 0) this.dealerIndex = 0;
+
+        if (!wasCurrentPlayer && this.currentPlayerIndex > playerIndex) this.currentPlayerIndex--;
+        if (this.currentPlayerIndex >= this.players.length) this.currentPlayerIndex = 0;
+
+        // If it was their turn, advance the game
+        if (wasCurrentPlayer && this.phase !== 'showdown' && this.phase !== 'waiting' && this.players.length > 0) {
+            this._advanceGame();
+        }
+
+        logger.info('POKER', `[${this.roomId}] Player removed from game`);
         return true;
     }
 

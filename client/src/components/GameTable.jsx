@@ -4,9 +4,11 @@ import PlayerSeat from './PlayerSeat';
 import ActionBar from './ActionBar';
 import CheatSheet from './CheatSheet';
 import ChatBox from './ChatBox';
+import Profile from './Profile';
 import Card from './Card';
 import { formatChips } from '../utils/cardUtils';
 import { soundEngine } from '../utils/soundUtils';
+import { loadProfile, awardHandWin, recordHandPlayed, getAvatarIcon, getWinAnimationCSS, AVATAR_WIN_FX } from '../utils/profileUtils';
 
 // Only label positions that matter to beginners (D chip handles Dealer)
 function getPositionLabel(posFromDealer, numPlayers) {
@@ -29,10 +31,19 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     const [playerEmotes, setPlayerEmotes] = useState({});
     const [showBlindsNotif, setShowBlindsNotif] = useState(false);
     const [blindsText, setBlindsText] = useState('');
+    const [profile, setProfile] = useState(loadProfile);
+    const [showProfile, setShowProfile] = useState(false);
+    const [achievementToasts, setAchievementToasts] = useState([]);
+    const [winnerFx, setWinnerFx] = useState({}); // playerId → { emoji, color }
 
     const prevPhaseRef = useRef(null);
     const prevHandNumberRef = useRef(null);
     const prevActionLogLenRef = useRef(0);
+    // Profile tracking refs
+    const profileRef = useRef(loadProfile());
+    const chipsSnapshotRef = useRef(null); // chips at start of current hand
+    const lastChipsRef = useRef(null);     // chips from previous state update
+    const awardedHandRef = useRef(null);   // hand number we last awarded points for
 
     useEffect(() => {
         const handleStateUpdate = (state) => {
@@ -88,15 +99,31 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         };
     }, [socket]);
 
-    // Sound triggers on game state changes
+    // Helper: add achievement toast (auto-dismiss after 4s)
+    const showAchievementToast = useCallback((ach) => {
+        const id = Date.now() + Math.random();
+        setAchievementToasts(prev => [...prev, { ...ach, _id: id }]);
+        setTimeout(() => setAchievementToasts(prev => prev.filter(t => t._id !== id)), 4000);
+    }, []);
+
+    // Sound triggers + profile tracking on game state changes
     useEffect(() => {
         if (!gameState) return;
 
         const prevPhase = prevPhaseRef.current;
         const prevHand = prevHandNumberRef.current;
 
+        // New hand started
         if (prevHand !== null && prevHand !== gameState.handNumber) {
             soundEngine.playCardDeal();
+            // Capture chips at start of this hand (= chips at end of previous hand)
+            chipsSnapshotRef.current = lastChipsRef.current;
+            // Count hands played
+            const { profile: p, newAchievements } = recordHandPlayed(profileRef.current);
+            profileRef.current = p;
+            setProfile(p);
+            newAchievements.forEach(showAchievementToast);
+
             if (gameState.blindsJustIncreased) {
                 soundEngine.playBlindsUp();
                 setBlindsText(`Blinds up: ${formatChips(gameState.smallBlind)}/${formatChips(gameState.bigBlind)}`);
@@ -116,9 +143,43 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             }
         }
 
+        // Award points + trigger win animations (once per hand)
+        if (gameState.winners && gameState.handNumber !== awardedHandRef.current) {
+            awardedHandRef.current = gameState.handNumber;
+
+            // Trigger seat win animations for ALL winners based on their avatar
+            const fx = {};
+            gameState.winners.forEach(w => {
+                const winnerPlayer = gameState.players.find(p => p.id === w.playerId);
+                const avatarId = winnerPlayer?.isCPU ? 'default' : (winnerPlayer?.avatar || 'default');
+                fx[w.playerId] = AVATAR_WIN_FX[avatarId] || AVATAR_WIN_FX.default;
+            });
+            setWinnerFx(fx);
+            setTimeout(() => setWinnerFx({}), 3200);
+
+            // Award points if we won
+            const myWin = gameState.winners.find(w => w.playerId === player.id);
+            if (myWin) {
+                const myResult = gameState.showdownResults?.find(r => r.playerId === player.id);
+                const { profile: p, newAchievements } = awardHandWin(profileRef.current, {
+                    amount: myWin.amount,
+                    hand: myResult?.hand || myWin.hand,
+                    wasAllIn: gameState.myState?.allIn,
+                    chipsBeforeHand: chipsSnapshotRef.current ?? gameState.myState?.chips,
+                    isGameWin: gameState.gameOver,
+                });
+                profileRef.current = p;
+                setProfile(p);
+                newAchievements.forEach(showAchievementToast);
+            }
+        }
+
+        // Update chip snapshot for next hand detection
+        lastChipsRef.current = gameState.myState?.chips;
+
         prevPhaseRef.current = gameState.phase;
         prevHandNumberRef.current = gameState.handNumber;
-    }, [gameState, player.id]);
+    }, [gameState, player.id, showAchievementToast]);
 
     // Sound triggers for CPU actions
     useEffect(() => {
@@ -136,6 +197,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         });
     }, [actionLog]);
 
+
     const handleAction = useCallback((action) => {
         socket.emit('game:action', action, (result) => {
             if (result.error) console.error('Action error:', result.error);
@@ -149,6 +211,19 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             if (result.error) console.error('New hand error:', result.error);
         });
     }, [socket]);
+
+    // Spacebar shortcut to deal next hand
+    useEffect(() => {
+        if (!showResults) return;
+        const handleKey = (e) => {
+            if (e.code === 'Space' && !e.repeat) {
+                e.preventDefault();
+                handleNewHand();
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showResults, handleNewHand]);
 
     const handleSendChat = useCallback((text) => {
         socket.emit('chat:message', text);
@@ -165,6 +240,12 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     const handleShowCards = useCallback(() => {
         socket.emit('game:showCards', (result) => {
             if (result.error) console.error('Show cards error:', result.error);
+        });
+    }, [socket]);
+
+    const handleKickBot = useCallback((cpuId) => {
+        socket.emit('room:removeCPU', cpuId, (result) => {
+            if (result.error) console.error('Kick bot error:', result.error);
         });
     }, [socket]);
 
@@ -211,6 +292,20 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         showdown: 'Showdown',
     }[gameState.phase] || gameState.phase;
 
+    // Winner info shown on seats (only when round is over)
+    const winnerInfoMap = {};
+    if (showResults && gameState.winners) {
+        gameState.winners.forEach(w => {
+            winnerInfoMap[w.playerId] = { amount: w.amount, hand: w.hand };
+        });
+    }
+
+    // "Show Cards" button appears on local player's seat after a fold-win (if not already shown)
+    const canShowMyCards = showResults
+        && gameState.winners
+        && gameState.myState?.holeCards?.length > 0
+        && !gameState.shownCards?.some(s => s.playerId === player.id);
+
     return (
         <div className="game-table">
             {/* Top bar */}
@@ -226,6 +321,13 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                     )}
                 </div>
                 <div className="game-table__topbar-right">
+                    <button
+                        className="game-table__profile-btn"
+                        onClick={() => setShowProfile(v => !v)}
+                        title="Profile & achievements"
+                    >
+                        {getAvatarIcon(profile)} <span className="game-table__profile-pts">⭐{profile.points || 0}</span>
+                    </button>
                     <button
                         className={`game-table__hand-helper-toggle ${handicapMode ? 'game-table__hand-helper-toggle--active' : ''}`}
                         onClick={() => setHandicapMode(!handicapMode)}
@@ -274,6 +376,12 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         position={i}
                         positionLabel={positionLabels[i]}
                         emote={p ? playerEmotes[p.id] : null}
+                        onKick={p && p.isCPU && gameState.hostId === player.id
+                            ? () => handleKickBot(p.id)
+                            : null}
+                        winFx={p ? winnerFx[p.id] : null}
+                        winnerInfo={p ? winnerInfoMap[p.id] : null}
+                        onShowCards={p && p.id === player.id && canShowMyCards ? handleShowCards : null}
                     />
                 ))}
 
@@ -307,129 +415,51 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 </div>
             </div>
 
-            {/* Winner celebration overlay */}
-            {showResults && gameState.winners && (
-                <div className="winner-overlay" onClick={gameState.gameOver ? undefined : handleNewHand}>
-                    <div className="winner-overlay__card" onClick={e => e.stopPropagation()}>
-                        {/* Confetti dots (CSS animated) */}
-                        <div className="winner-overlay__confetti" aria-hidden="true">
-                            {Array.from({ length: 18 }).map((_, i) => (
-                                <span key={i} className="winner-overlay__dot" style={{ '--i': i }} />
-                            ))}
-                        </div>
+            {/* Non-blocking full-screen celebration — plays winner's equipped animation */}
+            {showResults && gameState.winners && !gameState.gameOver && (
+                <div className={`celebration-layer celebration-layer--${getWinAnimationCSS(profile)}`} aria-hidden="true">
+                    {Array.from({ length: 40 }).map((_, i) => (
+                        <div key={i} className="celebration-layer__piece" style={{ '--ci': i }} />
+                    ))}
+                </div>
+            )}
 
-                        <div className="winner-overlay__trophy">
-                            {gameState.winners.length > 1 ? '🤝' : '🏆'}
-                        </div>
+            {/* Deal Next Hand — centered below felt */}
+            {showResults && gameState.winners && !gameState.gameOver && (
+                <div className="game-table__deal-bar">
+                    <button className="game-table__next-hand-btn" onClick={handleNewHand}>
+                        Deal Next Hand →
+                    </button>
+                    <span className="game-table__deal-hint">Press Space</span>
+                </div>
+            )}
 
-                        <h2 className="winner-overlay__title">
-                            {gameState.winners.length > 1 ? 'Split Pot!' : 'Winner!'}
-                        </h2>
-
-                        {gameState.winners.map((w, i) => (
-                            <div key={i} className="winner-overlay__winner">
-                                <div className="winner-overlay__winner-top">
-                                    <span className="winner-overlay__name">{w.name}</span>
-                                    <span className="winner-overlay__amount">+{formatChips(w.amount)}</span>
-                                </div>
-                                <span className="winner-overlay__hand">
-                                    {w.hand === 'Winner by fold' ? 'Opponents folded' : w.hand}
-                                </span>
-                            </div>
-                        ))}
-
-                        {/* Board cards */}
-                        {gameState.communityCards && gameState.communityCards.length > 0 && (
-                            <div className="winner-overlay__board">
-                                <div className="winner-overlay__board-label">Board</div>
-                                <div className="winner-overlay__board-cards">
-                                    {gameState.communityCards.map((card, i) => (
-                                        <Card key={i} card={card} small />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Showdown hands (actual showdown) */}
-                        {gameState.showdownResults && gameState.showdownResults.length > 0
-                            && gameState.winners.every(w => w.hand !== 'Winner by fold') && (
-                            <div className="winner-overlay__hands">
-                                {gameState.showdownResults.map((r, i) => (
-                                    <div key={i} className="winner-overlay__hand-row">
-                                        <span className="winner-overlay__hand-name">
-                                            {r.name}: <strong>{r.hand}</strong>
+            {/* Game Over overlay — final standings */}
+            {showResults && gameState.gameOver && (
+                <div className="winner-overlay">
+                    <div className="winner-overlay__card">
+                        <div className="winner-overlay__trophy">🏆</div>
+                        <h2 className="winner-overlay__title">Game Over</h2>
+                        <div className="winner-overlay__gameover">
+                            <div className="winner-overlay__gameover-title">— Final Standings —</div>
+                            {[...gameState.players]
+                                .sort((a, b) => b.chips - a.chips)
+                                .map((p, i) => (
+                                    <div key={p.id} className="winner-overlay__standing-row">
+                                        <span className="winner-overlay__standing-rank">#{i + 1}</span>
+                                        <span className="winner-overlay__standing-name">
+                                            {p.isCPU && '🤖'} {p.name}
                                         </span>
-                                        <div className="winner-overlay__hand-cards">
-                                            {r.holeCards.map((c, j) => (
-                                                <Card key={j} card={c} small />
-                                            ))}
-                                        </div>
+                                        <span className="winner-overlay__standing-chips">
+                                            {formatChips(p.chips)}
+                                        </span>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Shown cards (fold win — optional reveal) */}
-                        {gameState.winners.every(w => w.hand === 'Winner by fold') && (
-                            <>
-                                {gameState.shownCards && gameState.shownCards.length > 0 && (
-                                    <div className="winner-overlay__hands">
-                                        <div className="winner-overlay__board-label">Cards Shown</div>
-                                        {gameState.shownCards.map((entry, i) => (
-                                            <div key={i} className="winner-overlay__hand-row">
-                                                <span className="winner-overlay__hand-name">{entry.name}</span>
-                                                <div className="winner-overlay__hand-cards">
-                                                    {entry.holeCards.map((c, j) => (
-                                                        <Card key={j} card={c} small />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {gameState.myState?.holeCards?.length > 0
-                                    && !gameState.shownCards?.some(s => s.playerId === player.id) && (
-                                    <button
-                                        className="winner-overlay__show-cards-btn"
-                                        onClick={handleShowCards}
-                                    >
-                                        Show My Cards
-                                    </button>
-                                )}
-                            </>
-                        )}
-
-                        {gameState.gameOver ? (
-                            <>
-                                <div className="winner-overlay__gameover">
-                                    <div className="winner-overlay__gameover-title">— Final Standings —</div>
-                                    {[...gameState.players]
-                                        .sort((a, b) => b.chips - a.chips)
-                                        .map((p, i) => (
-                                            <div key={p.id} className="winner-overlay__standing-row">
-                                                <span className="winner-overlay__standing-rank">#{i + 1}</span>
-                                                <span className="winner-overlay__standing-name">
-                                                    {p.isCPU && '🤖'} {p.name}
-                                                </span>
-                                                <span className="winner-overlay__standing-chips">
-                                                    {formatChips(p.chips)}
-                                                </span>
-                                            </div>
-                                        ))
-                                    }
-                                </div>
-                                <button className="winner-overlay__next-btn" onClick={handleLeave}>
-                                    Leave Table
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button className="winner-overlay__next-btn" onClick={handleNewHand}>
-                                    Deal Next Hand →
-                                </button>
-                                <p className="winner-overlay__hint">or tap outside to dismiss</p>
-                            </>
-                        )}
+                                ))
+                            }
+                        </div>
+                        <button className="winner-overlay__next-btn" onClick={handleLeave}>
+                            Leave Table
+                        </button>
                     </div>
                 </div>
             )}
@@ -461,6 +491,34 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             {/* Side panels */}
             <CheatSheet />
             <ChatBox messages={messages} onSend={handleSendChat} onEmote={handleEmote} />
+
+            {/* Profile panel */}
+            {showProfile && (
+                <Profile
+                    profile={profile}
+                    onProfileChange={(p) => {
+                        profileRef.current = p;
+                        setProfile(p);
+                        // Re-broadcast new avatar so seat updates for everyone
+                        socket.emit('player:setAvatar', p.avatar || 'default');
+                    }}
+                    onClose={() => setShowProfile(false)}
+                />
+            )}
+
+            {/* Achievement toasts */}
+            <div className="achievement-toasts">
+                {achievementToasts.map(ach => (
+                    <div key={ach._id} className="achievement-toast">
+                        <span className="achievement-toast__icon">{ach.icon}</span>
+                        <div className="achievement-toast__text">
+                            <div className="achievement-toast__title">Achievement Unlocked!</div>
+                            <div className="achievement-toast__name">{ach.name}</div>
+                            {ach.reward > 0 && <div className="achievement-toast__reward">+{ach.reward} pts</div>}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

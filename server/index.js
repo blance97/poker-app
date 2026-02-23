@@ -48,17 +48,19 @@ io.on('connection', (socket) => {
     logger.info('SOCKET', `Client connected: ${socket.id}`);
 
     // Player sets their name
-    socket.on('player:setName', (name, callback) => {
+    socket.on('player:setName', (data, callback) => {
+        const name   = typeof data === 'string' ? data : data.name;
+        const avatar = typeof data === 'object' ? (data.avatar || 'default') : 'default';
         const playerId = socket.id;
-        connectedPlayers.set(socket.id, { id: playerId, name, roomId: null });
+        connectedPlayers.set(socket.id, { id: playerId, name, avatar, roomId: null });
         logger.info('SOCKET', `Player registered: ${name} (${playerId})`);
         callback({ id: playerId, name });
     });
 
     // Player reconnects after a page refresh
-    socket.on('player:reconnect', ({ name, roomId }, callback) => {
+    socket.on('player:reconnect', ({ name, roomId, avatar = 'default' }, callback) => {
         const playerId = socket.id;
-        connectedPlayers.set(socket.id, { id: playerId, name, roomId });
+        connectedPlayers.set(socket.id, { id: playerId, name, avatar, roomId });
         logger.info('SOCKET', `Player reconnecting: ${name} (${playerId}) to room ${roomId}`);
 
         if (roomId) {
@@ -88,6 +90,22 @@ io.on('connection', (socket) => {
             }
         } else {
             callback({ id: playerId, name, roomId: null, view: 'lobby' });
+        }
+    });
+
+    // Player updates their avatar mid-session
+    socket.on('player:setAvatar', (avatar) => {
+        const player = connectedPlayers.get(socket.id);
+        if (!player) return;
+        player.avatar = avatar;
+        // Also update room.players entry so the game state reflects the new avatar
+        if (player.roomId) {
+            const room = roomManager.rooms.get(player.roomId);
+            if (room) {
+                const rp = room.players.find(p => p.id === player.id);
+                if (rp) rp.avatar = avatar;
+                broadcastGameState(player.roomId);
+            }
         }
     });
 
@@ -162,11 +180,15 @@ io.on('connection', (socket) => {
         const player = connectedPlayers.get(socket.id);
         if (!player || !player.roomId) return callback({ error: 'Not in a room' });
 
+        const room = roomManager.getRoom(player.roomId);
+        if (!room || room.hostId !== player.id) return callback({ error: 'Only the host can kick bots' });
+
         const result = roomManager.removeCPU(player.roomId, cpuId);
         if (result.error) return callback(result);
 
         callback(result);
         io.to(player.roomId).emit('room:updated', result.room);
+        broadcastGameState(player.roomId);
     });
 
     // Game operations
@@ -340,10 +362,13 @@ function broadcastGameState(roomId) {
     const room = io.sockets.adapter.rooms.get(roomId);
     if (!room) return;
 
+    const roomInfo = roomManager.getRoom(roomId);
+
     for (const socketId of room) {
         const player = connectedPlayers.get(socketId);
         if (player) {
             const state = roomManager.getGameState(roomId, player.id);
+            if (state && roomInfo) state.hostId = roomInfo.hostId;
             io.to(socketId).emit('game:stateUpdate', state);
         }
     }

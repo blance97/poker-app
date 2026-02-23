@@ -29,18 +29,18 @@ export function useSocket() {
         };
     }, []);
 
-    const setName = useCallback((name) => {
+    const setName = useCallback((name, avatar = 'default') => {
         return new Promise((resolve) => {
-            socketRef.current?.emit('player:setName', name, (result) => {
+            socketRef.current?.emit('player:setName', { name, avatar }, (result) => {
                 setPlayer(result);
                 resolve(result);
             });
         });
     }, []);
 
-    const reconnect = useCallback((name, roomId) => {
+    const reconnect = useCallback((name, roomId, avatar = 'default') => {
         return new Promise((resolve, reject) => {
-            socketRef.current?.emit('player:reconnect', { name, roomId }, (result) => {
+            socketRef.current?.emit('player:reconnect', { name, roomId, avatar }, (result) => {
                 if (result) {
                     setPlayer({ id: result.id, name: result.name });
                     resolve(result);

@@ -1084,6 +1084,153 @@ body {
   font-size: 14px;
 }
 
+/* ── Avatar badge (shown above name for every player) ── */
+.seat__avatar-badge {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  transition: transform var(--transition-fast);
+}
+
+/* ── Win state: glowing pulse on the seat card ── */
+.seat--winning .seat__info {
+  animation: seatWinPulse 0.7s ease-in-out 4;
+}
+
+@keyframes seatWinPulse {
+
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.5) drop-shadow(0 0 12px var(--win-color, rgba(245, 158, 11, 0.8)));
+  }
+}
+
+.seat--winning .seat__avatar-badge {
+  animation: avatarBounce 0.4s ease-in-out 6;
+}
+
+@keyframes avatarBounce {
+
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+
+  50% {
+    transform: scale(1.4) translateY(-6px);
+  }
+}
+
+/* ── Win particle emojis ── */
+.seat__win-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.seat__win-particle {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  font-size: 16px;
+  line-height: 1;
+  animation: particleFloat 1.4s ease-out var(--delay, 0s) forwards;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translate(-50%, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), var(--dy, -80px)) scale(0.3) rotate(200deg);
+    opacity: 0;
+  }
+}
+
+.seat__kick-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  background: rgba(239, 68, 68, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 150ms;
+  z-index: 5;
+}
+
+.seat:hover .seat__kick-btn {
+  opacity: 1;
+}
+
+/* ── Winner badge (floats above the seat when that player wins) ── */
+.seat__winner-badge {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--accent-gold), #d97706);
+  color: #000;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  z-index: 15;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.55);
+  animation: slideUp 0.35s ease both;
+  text-align: center;
+}
+
+.seat__winner-hand {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+  margin-top: 1px;
+}
+
+/* ── "Show Cards" button on the local player's own seat ── */
+.seat__show-cards-btn {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  color: var(--accent-blue);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 15;
+  font-family: inherit;
+  transition: background var(--transition-fast);
+}
+
+.seat__show-cards-btn:hover {
+  background: rgba(59, 130, 246, 0.28);
+}
+
 .seat__chips {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
@@ -1302,23 +1449,367 @@ body {
   gap: 3px;
 }
 
+/* ── "Next Hand" button — inline in the center column, below community cards ── */
 .game-table__next-hand-btn {
-  margin-top: 20px;
-  background: linear-gradient(135deg, var(--accent-emerald), #059669);
+  background: linear-gradient(135deg, var(--accent-gold), #d97706);
   border: none;
-  color: white;
-  padding: 14px 32px;
+  color: #000;
+  padding: 10px 26px;
   border-radius: var(--radius);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
   font-family: inherit;
   cursor: pointer;
   transition: all var(--transition-fast);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+  white-space: nowrap;
+  animation: slideUp 0.35s ease both;
 }
 
 .game-table__next-hand-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5);
+}
+
+/* Deal bar — centered strip between felt and action bar */
+.game-table__deal-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: rgba(10, 14, 23, 0.9);
+  border-top: 1px solid var(--glass-border);
+  animation: slideUp 0.35s ease both;
+}
+
+.game-table__deal-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.game-table__deal-hint kbd {
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+/* ============================================================
+   CELEBRATION LAYER — full-screen, non-blocking, per-player effects
+   ============================================================ */
+.celebration-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.celebration-layer__piece {
+  position: absolute;
+  top: -16px;
+  width: 10px;
+  height: 10px;
+  left: calc(var(--ci) * 2.5%);
+  opacity: 0;
+}
+
+/* ── 1. CONFETTI (default) ── */
+.celebration-layer--confetti .celebration-layer__piece {
+  background: hsl(calc(var(--ci) * 27deg), 85%, 60%);
+  border-radius: 2px;
+  animation: cel-fall calc(1.8s + var(--ci) * 0.04s) ease-in calc(var(--ci) * 0.06s) forwards;
+}
+
+.celebration-layer--confetti .celebration-layer__piece:nth-child(odd) {
+  width: 6px;
+  height: 14px;
+  border-radius: 1px;
+}
+
+/* ── 2. FIREWORKS ── */
+.celebration-layer--fireworks .celebration-layer__piece {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(calc(var(--ci) * 30deg), 100%, 65%);
+  top: 40%;
+  left: 50%;
+  animation: cel-burst 1.2s ease-out calc(var(--ci) * 0.04s) forwards;
+}
+
+/* ── 3. STARS ── */
+.celebration-layer--stars .celebration-layer__piece {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fbbf24 30%, transparent 70%);
+  box-shadow: 0 0 8px 2px rgba(251, 191, 36, 0.6);
+  animation: cel-twinkle-fall calc(2.2s + var(--ci) * 0.05s) ease-in calc(var(--ci) * 0.07s) forwards;
+}
+
+/* ── 4. HEARTS ── */
+.celebration-layer--hearts .celebration-layer__piece {
+  width: 16px;
+  height: 16px;
+  background: none;
+  animation: cel-float-fall calc(2.5s + var(--ci) * 0.06s) ease-in-out calc(var(--ci) * 0.08s) forwards;
+}
+
+.celebration-layer--hearts .celebration-layer__piece::before {
+  content: '❤️';
+  font-size: 16px;
+  position: absolute;
+}
+
+/* ── 5. MONEY ── */
+.celebration-layer--money .celebration-layer__piece {
+  width: 20px;
+  height: 16px;
+  background: none;
+  animation: cel-fall calc(2s + var(--ci) * 0.05s) ease-in calc(var(--ci) * 0.06s) forwards;
+}
+
+.celebration-layer--money .celebration-layer__piece::before {
+  content: '💵';
+  font-size: 18px;
+  position: absolute;
+}
+
+/* ── 6. FLAMES (rise from bottom) ── */
+.celebration-layer--flames .celebration-layer__piece {
+  width: 18px;
+  height: 18px;
+  background: none;
+  top: auto;
+  bottom: -20px;
+  animation: cel-rise calc(1.6s + var(--ci) * 0.04s) ease-out calc(var(--ci) * 0.05s) forwards;
+}
+
+.celebration-layer--flames .celebration-layer__piece::before {
+  content: '🔥';
+  font-size: 20px;
+  position: absolute;
+}
+
+/* ── 7. SNOW ── */
+.celebration-layer--snow .celebration-layer__piece {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, white 40%, transparent 70%);
+  border-radius: 50%;
+  animation: cel-snow calc(3s + var(--ci) * 0.08s) linear calc(var(--ci) * 0.1s) forwards;
+}
+
+/* ── 8. LIGHTNING ── */
+.celebration-layer--lightning .celebration-layer__piece {
+  width: 4px;
+  height: 60px;
+  background: linear-gradient(180deg, rgba(147, 197, 253, 0.9), rgba(59, 130, 246, 0));
+  border-radius: 2px;
+  top: 0;
+  animation: cel-bolt 0.3s linear calc(var(--ci) * 0.12s) forwards;
+}
+
+.celebration-layer--lightning::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(147, 197, 253, 0.08);
+  animation: cel-flash 0.6s ease-out 0.1s both;
+}
+
+/* ── 9. GUNS (bullet tracers shoot outward from center) ── */
+.celebration-layer--guns .celebration-layer__piece {
+  width: 12px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(255, 200, 50, 0.9), rgba(255, 120, 20, 0));
+  border-radius: 1px;
+  top: 50%;
+  left: 50%;
+  transform-origin: left center;
+  /* Each piece shoots in a different direction */
+  --angle: calc(var(--ci) * 9deg);
+  rotate: var(--angle);
+  animation: cel-shoot 0.5s ease-out calc(var(--ci) * 0.06s) forwards;
+  box-shadow: 0 0 4px rgba(255, 160, 30, 0.6);
+}
+
+.celebration-layer--guns .celebration-layer__piece::after {
+  content: '💥';
+  position: absolute;
+  right: -16px;
+  top: -8px;
+  font-size: 14px;
+  opacity: 0;
+  animation: cel-impact 0.3s ease-out calc(var(--ci) * 0.06s + 0.35s) forwards;
+}
+
+/* Muzzle flash in center */
+.celebration-layer--guns::before {
+  content: '🔫';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  animation: cel-muzzle 0.4s ease-out both;
+  z-index: 2;
+}
+
+/* ── KEYFRAMES ── */
+
+/* Confetti / Money: fall from top */
+@keyframes cel-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  75% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(calc(var(--ci) * 90deg + 360deg)) scale(0.6);
+  }
+}
+
+/* Fireworks: burst outward from center */
+@keyframes cel-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc((var(--ci) - 20) * 14px),
+        calc((var(--ci) * 7 % 40 - 20) * 10px)) scale(0.3);
+  }
+}
+
+/* Stars: twinkle while falling */
+@keyframes cel-twinkle-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: translateY(50vh) scale(0.8);
+  }
+
+  75% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) scale(0.5);
+  }
+}
+
+/* Hearts: gentle float with sway */
+@keyframes cel-float-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) translateX(0) scale(1);
+  }
+
+  25% {
+    transform: translateY(25vh) translateX(15px) scale(0.95);
+  }
+
+  50% {
+    transform: translateY(50vh) translateX(-10px) scale(0.9);
+  }
+
+  75% {
+    opacity: 0.6;
+    transform: translateY(75vh) translateX(8px) scale(0.85);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) translateX(-5px) scale(0.7);
+  }
+}
+
+/* Flames: rise from bottom */
+@keyframes cel-rise {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  60% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(calc(-80vh - var(--ci) * 5px)) scale(0.4);
+  }
+}
+
+/* Snow: gentle drift */
+@keyframes cel-snow {
+  0% {
+    opacity: 0.9;
+    transform: translateY(0) translateX(0);
+  }
+
+  25% {
+    transform: translateY(25vh) translateX(10px);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: translateY(50vh) translateX(-8px);
+  }
+
+  75% {
+    transform: translateY(75vh) translateX(12px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) translateX(-4px);
+  }
+}
+
+/* Lightning: quick bolt flash */
+@keyframes cel-bolt {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleY(1.2) translateY(30vh);
+  }
+}
+
+@keyframes cel-flash {
+  0% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Action log */
@@ -1556,43 +2047,7 @@ body {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
 }
 
-/* ── Winner banner — flex strip between felt and action bar, always on top ── */
-.game-table__winner-banner {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 10px 20px;
-  background: rgba(10, 14, 23, 0.98);
-  border-top: 2px solid var(--accent-gold);
-  z-index: 30;
-  animation: bannerSlideUp 0.35s ease;
-}
 
-.game-table__winner-banner-title {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--accent-gold);
-  white-space: nowrap;
-}
-
-.game-table__winner-banner-players {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  align-items: center;
-  justify-content: center;
-}
-
-.game-table__winner-banner-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
 
 .action-bar__raise {
   display: flex;
@@ -1902,20 +2357,17 @@ body {
 .chat-box__toggle-icon {
   font-size: 10px;
   opacity: 0.6;
-  /* Only visible on mobile — on desktop the body is always shown */
-  display: none;
+  display: inline;
 }
 
-@media (max-width: 768px) {
-  .chat-box__toggle-icon {
-    display: inline;
-  }
-}
-
-/* On desktop the body is always visible; on mobile it's collapsed by default */
+/* Chat body hidden by default everywhere — click header to expand */
 .chat-box__body {
-  display: flex;
+  display: none;
   flex-direction: column;
+}
+
+.chat-box--expanded .chat-box__body {
+  display: flex;
 }
 
 .chat-box__messages {
@@ -2192,10 +2644,12 @@ body {
     width: auto;
     left: auto;
     right: 8px;
-    bottom: 140px; /* floats above action bar */
+    bottom: 140px;
+    /* floats above action bar */
     top: auto;
     border-radius: 20px;
-    z-index: 20; /* always above action bar (z-15) */
+    z-index: 20;
+    /* always above action bar (z-15) */
   }
 
   .chat-box--expanded {
@@ -2220,14 +2674,6 @@ body {
     padding: 10px 14px;
   }
 
-  .chat-box__body {
-    display: none;
-  }
-
-  .chat-box--expanded .chat-box__body {
-    display: flex;
-  }
-
   .chat-box__messages {
     height: 140px;
   }
@@ -2243,22 +2689,7 @@ body {
     padding: 3px 6px;
   }
 
-  /* Winner banner on mobile — keep it compact */
-  .game-table__winner-banner {
-    bottom: 6px;
-    padding: 12px 16px;
-    max-width: 96vw;
-  }
 
-  .game-table__winner-banner-title {
-    font-size: 16px;
-  }
-
-  .game-table__next-hand-btn {
-    width: 100%;
-    padding: 12px 16px;
-    font-size: 13px;
-  }
 
   /* Login card fits any phone */
   .login__card {
@@ -2539,6 +2970,7 @@ body {
   transform: scale(1.3);
   background: rgba(255, 255, 255, 0.08);
 }
+
 /* ============================================================
    WINNER CELEBRATION OVERLAY
    ============================================================ */
@@ -2556,8 +2988,13 @@ body {
 }
 
 @keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .winner-overlay__card {
@@ -2579,8 +3016,15 @@ body {
 }
 
 @keyframes cardPop {
-  from { opacity: 0; transform: scale(0.75) translateY(30px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.75) translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Confetti dots */
@@ -2604,9 +3048,19 @@ body {
 }
 
 @keyframes confettiFall {
-  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
-  80%  { opacity: 1; }
-  100% { transform: translateY(340px) rotate(720deg) scale(0.6); opacity: 0; }
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(340px) rotate(720deg) scale(0.6);
+    opacity: 0;
+  }
 }
 
 .winner-overlay__trophy {
@@ -2617,8 +3071,13 @@ body {
 }
 
 @keyframes trophyBounce {
-  from { transform: scale(0) rotate(-15deg); }
-  to   { transform: scale(1) rotate(0deg); }
+  from {
+    transform: scale(0) rotate(-15deg);
+  }
+
+  to {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .winner-overlay__title {
@@ -2840,5 +3299,408 @@ body {
 
   .winner-overlay__amount {
     font-size: 17px;
+  }
+}
+
+/* ============================================================
+   PROFILE BUTTON (topbar + lobby)
+   ============================================================ */
+.game-table__profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 14px;
+  color: var(--accent-gold-light);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+}
+
+.game-table__profile-btn:hover {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.game-table__profile-pts {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lobby__profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-gold-light);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+}
+
+.lobby__profile-btn:hover {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+/* ============================================================
+   PROFILE PANEL
+   ============================================================ */
+.profile-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-left: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.profile-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.profile-panel__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-panel__avatar-display {
+  font-size: 36px;
+}
+
+.profile-panel__points {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-gold-light);
+}
+
+.profile-panel__ach-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.profile-panel__close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.profile-panel__close:hover {
+  color: var(--text-primary);
+}
+
+.profile-panel__tabs {
+  display: flex;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.profile-panel__tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.profile-panel__tab--active {
+  color: var(--accent-gold-light);
+  border-bottom-color: var(--accent-gold);
+}
+
+.profile-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Stats */
+.profile-panel__stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 6px;
+}
+
+.profile-panel__stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.profile-panel__stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Achievements */
+.profile-panel__ach {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 6px;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.profile-panel__ach--unlocked {
+  opacity: 1;
+  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.profile-panel__ach-icon {
+  font-size: 22px;
+  width: 32px;
+  text-align: center;
+}
+
+.profile-panel__ach-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-panel__ach-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.profile-panel__ach-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.profile-panel__ach-reward {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.profile-panel__ach-reward--earned {
+  color: var(--accent-gold-light);
+}
+
+/* Shop */
+.profile-panel__balance {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-gold-light);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.profile-panel__shop-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 14px 0 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.profile-panel__av-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.profile-panel__avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.profile-panel__av-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast);
+}
+
+.profile-panel__av-item--owned {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.profile-panel__av-item--selected {
+  border-color: var(--accent-gold);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.profile-panel__av-icon {
+  font-size: 28px;
+}
+
+.profile-panel__av-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.profile-panel__av-btn {
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  transition: background var(--transition-fast);
+}
+
+.profile-panel__av-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.profile-panel__av-btn--buy {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--accent-gold-light);
+}
+
+.profile-panel__av-btn--buy:not(:disabled):hover {
+  background: rgba(245, 158, 11, 0.35);
+}
+
+.profile-panel__av-btn--equipped {
+  background: rgba(16, 185, 129, 0.25);
+  color: var(--accent-emerald);
+}
+
+/* ============================================================
+   ACHIEVEMENT TOASTS
+   ============================================================ */
+.achievement-toasts {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.achievement-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.1));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  min-width: 220px;
+  backdrop-filter: blur(16px);
+  animation: toastSlideIn 0.3s ease, toastFadeOut 0.5s ease 3.5s forwards;
+}
+
+.achievement-toast__icon {
+  font-size: 28px;
+}
+
+.achievement-toast__title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-gold);
+}
+
+.achievement-toast__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.achievement-toast__reward {
+  font-size: 12px;
+  color: var(--accent-gold-light);
+  font-weight: 600;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastFadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-panel {
+    width: 100%;
+  }
+
+  .game-table__profile-pts {
+    display: none;
+  }
+
+  .achievement-toasts {
+    right: 8px;
+    top: 52px;
+  }
+
+  .achievement-toast {
+    min-width: 180px;
   }
 }
