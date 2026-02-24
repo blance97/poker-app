@@ -1471,6 +1471,27 @@ body {
   box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5);
 }
 
+.game-table__leave-deal-btn {
+  background: linear-gradient(135deg, var(--accent-red), #b91c1c);
+  border: none;
+  color: white;
+  padding: 10px 26px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+  white-space: nowrap;
+  animation: slideUp 0.35s ease both;
+}
+
+.game-table__leave-deal-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5);
+}
+
 /* Deal bar — centered strip between felt and action bar */
 .game-table__deal-bar {
   flex-shrink: 0;
@@ -1511,9 +1532,9 @@ body {
 .celebration-layer__piece {
   position: absolute;
   top: -16px;
-  width: 10px;
-  height: 10px;
-  left: calc(var(--ci) * 2.5%);
+  width: 16px;
+  height: 16px;
+  left: calc(var(--ci) * 1.25%);
   opacity: 0;
 }
 
@@ -1522,130 +1543,312 @@ body {
   background: hsl(calc(var(--ci) * 27deg), 85%, 60%);
   border-radius: 2px;
   animation: cel-fall calc(1.8s + var(--ci) * 0.04s) ease-in calc(var(--ci) * 0.06s) forwards;
+  box-shadow: 0 0 8px hsla(calc(var(--ci) * 27deg), 85%, 60%, 0.9);
+  width: 14px;
+  height: 14px;
 }
 
 .celebration-layer--confetti .celebration-layer__piece:nth-child(odd) {
-  width: 6px;
-  height: 14px;
-  border-radius: 1px;
+  width: 10px;
+  height: 20px;
+  border-radius: 2px;
+}
+
+.celebration-layer--confetti .celebration-layer__piece:nth-child(even) {
+  width: 18px;
+  height: 12px;
 }
 
 /* ── 2. FIREWORKS ── */
 .celebration-layer--fireworks .celebration-layer__piece {
-  width: 6px;
-  height: 6px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: hsl(calc(var(--ci) * 30deg), 100%, 65%);
   top: 40%;
   left: 50%;
   animation: cel-burst 1.2s ease-out calc(var(--ci) * 0.04s) forwards;
+  box-shadow: 0 0 20px hsla(calc(var(--ci) * 30deg), 100%, 65%, 1);
+}
+
+.celebration-layer--fireworks .celebration-layer__piece::before {
+  content: '✨';
+  position: absolute;
+  font-size: 28px;
+  left: -14px;
+  top: -14px;
+  opacity: 0;
+  animation: cel-sparkle 0.5s ease-out calc(var(--ci) * 0.04s + 0.6s) forwards;
 }
 
 /* ── 3. STARS ── */
 .celebration-layer--stars .celebration-layer__piece {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fbbf24 30%, transparent 70%);
-  box-shadow: 0 0 8px 2px rgba(251, 191, 36, 0.6);
+  width: 30px;
+  height: 30px;
+  background: none;
   animation: cel-twinkle-fall calc(2.2s + var(--ci) * 0.05s) ease-in calc(var(--ci) * 0.07s) forwards;
+}
+
+.celebration-layer--stars .celebration-layer__piece::before {
+  content: '⭐';
+  font-size: 28px;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 1));
+}
+
+.celebration-layer--stars .celebration-layer__piece:nth-child(3n)::before {
+  content: '✨';
+  font-size: 24px;
+}
+
+.celebration-layer--stars .celebration-layer__piece:nth-child(5n)::before {
+  content: '💫';
+  font-size: 32px;
 }
 
 /* ── 4. HEARTS ── */
 .celebration-layer--hearts .celebration-layer__piece {
-  width: 16px;
-  height: 16px;
+  width: 32px;
+  height: 32px;
   background: none;
   animation: cel-float-fall calc(2.5s + var(--ci) * 0.06s) ease-in-out calc(var(--ci) * 0.08s) forwards;
 }
 
 .celebration-layer--hearts .celebration-layer__piece::before {
   content: '❤️';
-  font-size: 16px;
+  font-size: 30px;
   position: absolute;
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1));
+}
+
+.celebration-layer--hearts .celebration-layer__piece:nth-child(4n)::before {
+  content: '💖';
+  font-size: 26px;
+}
+
+.celebration-layer--hearts .celebration-layer__piece:nth-child(6n)::before {
+  content: '💕';
+  font-size: 24px;
 }
 
 /* ── 5. MONEY ── */
 .celebration-layer--money .celebration-layer__piece {
-  width: 20px;
-  height: 16px;
+  width: 32px;
+  height: 28px;
   background: none;
   animation: cel-fall calc(2s + var(--ci) * 0.05s) ease-in calc(var(--ci) * 0.06s) forwards;
 }
 
 .celebration-layer--money .celebration-layer__piece::before {
   content: '💵';
-  font-size: 18px;
+  font-size: 32px;
   position: absolute;
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 1));
+}
+
+.celebration-layer--money .celebration-layer__piece:nth-child(3n)::before {
+  content: '💴';
+  font-size: 30px;
+}
+
+.celebration-layer--money .celebration-layer__piece:nth-child(5n)::before {
+  content: '💶';
+  font-size: 28px;
+}
+
+.celebration-layer--money .celebration-layer__piece:nth-child(7n)::before {
+  content: '💷';
+  font-size: 30px;
 }
 
 /* ── 6. FLAMES (rise from bottom) ── */
 .celebration-layer--flames .celebration-layer__piece {
-  width: 18px;
-  height: 18px;
+  width: 40px;
+  height: 40px;
   background: none;
   top: auto;
-  bottom: -20px;
+  bottom: -40px;
   animation: cel-rise calc(1.6s + var(--ci) * 0.04s) ease-out calc(var(--ci) * 0.05s) forwards;
 }
 
 .celebration-layer--flames .celebration-layer__piece::before {
   content: '🔥';
-  font-size: 20px;
+  font-size: 48px;
   position: absolute;
+  filter: drop-shadow(0 0 15px rgba(255, 140, 0, 1)) drop-shadow(0 0 25px rgba(255, 69, 0, 1));
+  animation: flame-flicker 0.3s ease-in-out infinite;
+}
+
+.celebration-layer--flames .celebration-layer__piece:nth-child(3n) {
+  width: 50px;
+  height: 50px;
+}
+
+.celebration-layer--flames .celebration-layer__piece:nth-child(3n)::before {
+  font-size: 60px;
+}
+
+.celebration-layer--flames .celebration-layer__piece:nth-child(5n) {
+  width: 60px;
+  height: 60px;
+}
+
+.celebration-layer--flames .celebration-layer__piece:nth-child(5n)::before {
+  font-size: 72px;
+}
+
+/* Add screen overlay for inferno effect */
+.celebration-layer--flames::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(255, 69, 0, 0.3) 0%, transparent 60%);
+  animation: inferno-glow 1.5s ease-in-out infinite;
 }
 
 /* ── 7. SNOW ── */
 .celebration-layer--snow .celebration-layer__piece {
-  width: 8px;
-  height: 8px;
-  background: radial-gradient(circle, white 40%, transparent 70%);
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  background: none;
   animation: cel-snow calc(3s + var(--ci) * 0.08s) linear calc(var(--ci) * 0.1s) forwards;
+}
+
+.celebration-layer--snow .celebration-layer__piece::before {
+  content: '❄️';
+  font-size: 28px;
+  filter: drop-shadow(0 0 10px rgba(147, 197, 253, 1));
+}
+
+.celebration-layer--snow .celebration-layer__piece:nth-child(3n)::before {
+  font-size: 22px;
+}
+
+.celebration-layer--snow .celebration-layer__piece:nth-child(5n)::before {
+  font-size: 34px;
+}
+
+.celebration-layer--snow .celebration-layer__piece:nth-child(7n)::before {
+  content: '⛄';
+  font-size: 26px;
 }
 
 /* ── 8. LIGHTNING ── */
 .celebration-layer--lightning .celebration-layer__piece {
-  width: 4px;
-  height: 60px;
-  background: linear-gradient(180deg, rgba(147, 197, 253, 0.9), rgba(59, 130, 246, 0));
-  border-radius: 2px;
+  width: 8px;
+  height: 120px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(147, 197, 253, 0.9) 30%, rgba(59, 130, 246, 0.6) 70%, transparent 100%);
+  border-radius: 3px;
   top: 0;
   animation: cel-bolt 0.3s linear calc(var(--ci) * 0.12s) forwards;
+  box-shadow: 0 0 20px rgba(147, 197, 253, 1), 0 0 40px rgba(59, 130, 246, 1);
+  clip-path: polygon(
+    40% 0%,
+    50% 30%,
+    60% 30%,
+    45% 60%,
+    55% 60%,
+    50% 100%
+  );
+}
+
+.celebration-layer--lightning .celebration-layer__piece:nth-child(even) {
+  height: 150px;
+  width: 10px;
+  clip-path: polygon(
+    35% 0%,
+    55% 25%,
+    65% 25%,
+    40% 55%,
+    60% 55%,
+    45% 80%,
+    50% 100%
+  );
 }
 
 .celebration-layer--lightning::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(147, 197, 253, 0.08);
+  background: rgba(147, 197, 253, 0.2);
   animation: cel-flash 0.6s ease-out 0.1s both;
 }
 
 /* ── 9. GUNS (bullet tracers shoot outward from center) ── */
 .celebration-layer--guns .celebration-layer__piece {
-  width: 12px;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(255, 200, 50, 0.9), rgba(255, 120, 20, 0));
-  border-radius: 1px;
+  width: 60px;
+  height: 60px;
   top: 50%;
   left: 50%;
-  transform-origin: left center;
-  /* Each piece shoots in a different direction */
-  --angle: calc(var(--ci) * 9deg);
-  rotate: var(--angle);
-  animation: cel-shoot 0.5s ease-out calc(var(--ci) * 0.06s) forwards;
-  box-shadow: 0 0 4px rgba(255, 160, 30, 0.6);
+  /* Shoot toward target opponent positions */
+  --base-angle: calc(
+    (var(--target-pos, 0) * 45deg) - 90deg
+  );
+  --angle: calc(var(--base-angle) + (var(--ci) - 7) * 8deg);
+  --distance: calc(700px + var(--ci) * 30px);
+  --duration: calc(2s + var(--ci) * 0.08s);
+  transform: translate(-50%, -50%) rotate(var(--angle));
+  animation: cel-shoot var(--duration) ease-out calc(var(--ci) * 0.06s) forwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Projectile emoji content - variety of bullets */
+.celebration-layer--guns .celebration-layer__piece::before {
+  content: '🔥';
+  display: block;
+  font-size: 42px;
+  filter: drop-shadow(0 0 15px rgba(255, 180, 50, 1)) drop-shadow(0 0 30px rgba(255, 140, 30, 1));
+  animation: projectile-spin var(--duration) linear forwards;
+}
+
+.celebration-layer--guns .celebration-layer__piece:nth-child(3n)::before {
+  content: '💨';
+  font-size: 38px;
+  filter: drop-shadow(0 0 15px rgba(200, 200, 200, 1)) drop-shadow(0 0 30px rgba(150, 150, 150, 1));
+}
+
+.celebration-layer--guns .celebration-layer__piece:nth-child(5n)::before {
+  content: '⚡';
+  font-size: 40px;
+  filter: drop-shadow(0 0 15px rgba(120, 220, 255, 1)) drop-shadow(0 0 30px rgba(60, 180, 255, 1));
+}
+
+.celebration-layer--guns .celebration-layer__piece:nth-child(7n)::before {
+  content: '💫';
+  font-size: 46px;
+  filter: drop-shadow(0 0 18px rgba(255, 220, 80, 1)) drop-shadow(0 0 35px rgba(255, 200, 60, 1));
+}
+
+.celebration-layer--guns .celebration-layer__piece:nth-child(11n)::before {
+  content: '🚀';
+  font-size: 44px;
+  filter: drop-shadow(0 0 18px rgba(255, 100, 100, 1)) drop-shadow(0 0 35px rgba(255, 60, 60, 1));
+}
+
+.celebration-layer--guns .celebration-layer__piece:nth-child(13n)::before {
+  content: '💣';
+  font-size: 36px;
+  filter: drop-shadow(0 0 15px rgba(100, 100, 100, 1));
+}
+
+.celebration-layer--guns .celebration-layer__piece:nth-child(17n)::before {
+  content: '🎯';
+  font-size: 34px;
+  filter: drop-shadow(0 0 15px rgba(255, 0, 0, 1));
 }
 
 .celebration-layer--guns .celebration-layer__piece::after {
   content: '💥';
   position: absolute;
-  right: -16px;
-  top: -8px;
-  font-size: 14px;
+  right: -60px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 48px;
   opacity: 0;
-  animation: cel-impact 0.3s ease-out calc(var(--ci) * 0.06s + 0.35s) forwards;
+  animation: cel-impact 1s ease-out calc(var(--ci) * 0.06s + var(--duration) - 0.5s) forwards;
+  filter: drop-shadow(0 0 20px rgba(255, 100, 50, 1));
 }
 
 /* Muzzle flash in center */
@@ -1655,9 +1858,25 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 48px;
-  animation: cel-muzzle 0.4s ease-out both;
+  font-size: 150px;
+  animation: cel-muzzle 1.2s ease-out both;
   z-index: 2;
+  filter: drop-shadow(0 0 30px rgba(255, 200, 50, 1));
+}
+
+/* Add a bright flash background */
+.celebration-layer--guns::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255, 220, 80, 0.5), rgba(255, 180, 50, 0.3), transparent);
+  border-radius: 50%;
+  animation: cel-muzzle-flash 1s ease-out both;
+  z-index: 1;
 }
 
 /* ── KEYFRAMES ── */
@@ -1809,6 +2028,197 @@ body {
 
   100% {
     opacity: 0;
+  }
+}
+
+/* Gun animation: shoot bullets outward */
+@keyframes cel-shoot {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0);
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 0.7;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--distance, 600px));
+  }
+}
+
+/* Projectile rotation for visual effect */
+@keyframes projectile-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+/* Gun animation: impact explosion at end of bullet */
+@keyframes cel-impact {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+
+  20% {
+    opacity: 1;
+    transform: scale(2) rotate(30deg);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(2.5) rotate(-20deg);
+  }
+
+  70% {
+    opacity: 0.8;
+    transform: scale(2.2) rotate(15deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.5) rotate(60deg);
+  }
+}
+
+/* Gun animation: muzzle flash in center */
+@keyframes cel-muzzle {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3) rotate(12deg);
+  }
+
+  30% {
+    transform: translate(-50%, -50%) scale(1.1) rotate(-8deg);
+  }
+
+  45% {
+    transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
+  }
+
+  60% {
+    transform: translate(-50%, -50%) scale(1.15) rotate(-5deg);
+  }
+
+  80% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.1) rotate(5deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(-30deg);
+  }
+}
+
+/* Gun animation: flash background pulse */
+@keyframes cel-muzzle-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+
+  20% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(4);
+  }
+}
+
+/* Flame flicker effect */
+@keyframes flame-flicker {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  25% {
+    transform: scale(1.05) rotate(3deg);
+    opacity: 0.95;
+  }
+
+  50% {
+    transform: scale(0.97) rotate(-2deg);
+    opacity: 0.9;
+  }
+
+  75% {
+    transform: scale(1.03) rotate(2deg);
+    opacity: 0.93;
+  }
+}
+
+/* Inferno glow overlay */
+@keyframes inferno-glow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Sparkle appearance for fireworks */
+@keyframes cel-sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Gun animation: bullet trail effect */
+@keyframes cel-trail {
+  0% {
+    opacity: 0.6;
+    transform: scaleX(0);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scaleX(1.5);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(0.5);
   }
 }
 

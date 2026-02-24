@@ -157,8 +157,25 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             setWinnerFx(fx);
             setTimeout(() => setWinnerFx({}), 3200);
 
-            // Award points if we won
+            // Play sound effect based on animation type if I won
             const myWin = gameState.winners.find(w => w.playerId === player.id);
+            if (myWin) {
+                const animationType = getWinAnimationCSS(profile);
+                switch (animationType) {
+                    case 'guns': soundEngine.playMachineGun(); break;
+                    case 'fireworks': soundEngine.playFireworks(); break;
+                    case 'stars': soundEngine.playStars(); break;
+                    case 'hearts': soundEngine.playHearts(); break;
+                    case 'money': soundEngine.playMoney(); break;
+                    case 'flames': soundEngine.playFlames(); break;
+                    case 'snow': soundEngine.playSnow(); break;
+                    case 'lightning': soundEngine.playLightning(); break;
+                    case 'confetti': soundEngine.playConfetti(); break;
+                    default: soundEngine.playConfetti(); break;
+                }
+            }
+
+            // Award points if we won
             if (myWin) {
                 const myResult = gameState.showdownResults?.find(r => r.playerId === player.id);
                 const { profile: p, newAchievements } = awardHandWin(profileRef.current, {
@@ -204,13 +221,38 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         });
     }, [socket]);
 
+    const handleLeave = useCallback(() => {
+        socket.emit('room:leave', () => { onLeave(); });
+    }, [socket, onLeave]);
+
     const handleNewHand = useCallback(() => {
         setShowResults(false);
         setActionLog([]);
         socket.emit('game:newHand', (result) => {
-            if (result.error) console.error('New hand error:', result.error);
+            if (result.error) {
+                console.error('New hand error:', result.error);
+                if (result.error.includes('not enough players') || result.error.includes('Game over')) {
+                    // Game is over
+                    const confirmLeave = confirm('Game Over! Not enough players to continue. Leave table?');
+                    if (confirmLeave) {
+                        handleLeave();
+                    } else {
+                        setShowResults(true);
+                    }
+                } else {
+                    alert(result.error);
+                }
+            }
+            if (result.success === false) {
+                // Game is over, not enough players
+                setShowResults(true);
+                const confirmLeave = confirm('Game Over! Not enough players to continue. Leave table?');
+                if (confirmLeave) {
+                    handleLeave();
+                }
+            }
         });
-    }, [socket]);
+    }, [socket, handleLeave]);
 
     // Spacebar shortcut to deal next hand
     useEffect(() => {
@@ -233,9 +275,6 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         socket.emit('chat:emote', emote);
     }, [socket]);
 
-    const handleLeave = useCallback(() => {
-        socket.emit('room:leave', () => { onLeave(); });
-    }, [socket, onLeave]);
 
     const handleShowCards = useCallback(() => {
         socket.emit('game:showCards', (result) => {
@@ -305,6 +344,11 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         && gameState.winners
         && gameState.myState?.holeCards?.length > 0
         && !gameState.shownCards?.some(s => s.playerId === player.id);
+
+    // Calculate opponent positions for gun animation (excluding self)
+    const opponentPositions = arrangedPlayers
+        .map((p, i) => p && p.id !== player.id ? i : null)
+        .filter(i => i !== null);
 
     return (
         <div className="game-table">
@@ -417,10 +461,21 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
 
             {/* Non-blocking full-screen celebration — plays winner's equipped animation */}
             {showResults && gameState.winners && !gameState.gameOver && (
-                <div className={`celebration-layer celebration-layer--${getWinAnimationCSS(profile)}`} aria-hidden="true">
-                    {Array.from({ length: 40 }).map((_, i) => (
-                        <div key={i} className="celebration-layer__piece" style={{ '--ci': i }} />
-                    ))}
+                <div className={`celebration-layer celebration-layer--${getWinAnimationCSS(profile)}`} aria-hidden="true" data-opponent-count={opponentPositions.length}>
+                    {getWinAnimationCSS(profile) === 'guns'
+                        ? opponentPositions.flatMap(pos =>
+                            Array.from({ length: 15 }).map((_, i) => (
+                                <div
+                                    key={`${pos}-${i}`}
+                                    className="celebration-layer__piece"
+                                    style={{ '--ci': i, '--target-pos': pos }}
+                                />
+                            ))
+                          )
+                        : Array.from({ length: 80 }).map((_, i) => (
+                            <div key={i} className="celebration-layer__piece" style={{ '--ci': i }} />
+                          ))
+                    }
                 </div>
             )}
 
@@ -429,6 +484,9 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 <div className="game-table__deal-bar">
                     <button className="game-table__next-hand-btn" onClick={handleNewHand}>
                         Deal Next Hand →
+                    </button>
+                    <button className="game-table__leave-deal-btn" onClick={handleLeave}>
+                        Leave Table
                     </button>
                     <span className="game-table__deal-hint">Press Space</span>
                 </div>

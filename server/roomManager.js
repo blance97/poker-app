@@ -209,8 +209,9 @@ class RoomManager {
         const success = room.game.newHand();
         if (!success) {
             room.status = 'finished';
+            return { success: false, error: 'Game over - not enough players with chips', room: this._sanitizeRoom(room) };
         }
-        return { success, room: this._sanitizeRoom(room) };
+        return { success: true, room: this._sanitizeRoom(room) };
     }
 
     rebuy(roomId, playerId) {

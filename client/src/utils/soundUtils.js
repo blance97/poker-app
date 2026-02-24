@@ -227,6 +227,284 @@ class SoundEngine {
             osc.stop(ctx.currentTime + 0.05);
         } catch (_) {}
     }
+
+    // Gun shot — rapid fire burst
+    playGunShot(delay = 0) {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            const t = ctx.currentTime + delay;
+
+            // Create explosion noise
+            const len = Math.floor(ctx.sampleRate * 0.08);
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.5);
+            }
+
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+
+            // Add low frequency boom
+            const osc = ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(120, t);
+            osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+
+            const noiseGain = ctx.createGain();
+            const oscGain = ctx.createGain();
+            const mainGain = ctx.createGain();
+
+            noiseGain.gain.value = this.volume * 0.7;
+            oscGain.gain.setValueAtTime(this.volume * 0.5, t);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            mainGain.gain.value = 1;
+
+            src.connect(noiseGain);
+            osc.connect(oscGain);
+            noiseGain.connect(mainGain);
+            oscGain.connect(mainGain);
+            mainGain.connect(ctx.destination);
+
+            src.start(t);
+            osc.start(t);
+            osc.stop(t + 0.12);
+        } catch (_) {}
+    }
+
+    // Machine gun burst — multiple rapid shots
+    playMachineGun() {
+        if (this.muted) return;
+        for (let i = 0; i < 8; i++) {
+            this.playGunShot(i * 0.08);
+        }
+    }
+
+    // Confetti pop sound
+    playConfetti() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            for (let i = 0; i < 3; i++) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                const t = ctx.currentTime + i * 0.08;
+                osc.frequency.setValueAtTime(800 + i * 200, t);
+                osc.frequency.exponentialRampToValueAtTime(400, t + 0.1);
+                gain.gain.setValueAtTime(this.volume * 0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                osc.start(t);
+                osc.stop(t + 0.15);
+            }
+        } catch (_) {}
+    }
+
+    // Fireworks explosion sound
+    playFireworks() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            for (let i = 0; i < 5; i++) {
+                const t = ctx.currentTime + i * 0.4;
+                const whistle = ctx.createOscillator();
+                const whistleGain = ctx.createGain();
+                whistle.connect(whistleGain);
+                whistleGain.connect(ctx.destination);
+                whistle.type = 'sine';
+                whistle.frequency.setValueAtTime(600, t);
+                whistle.frequency.exponentialRampToValueAtTime(1200, t + 0.3);
+                whistleGain.gain.setValueAtTime(this.volume * 0.2, t);
+                whistleGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+                whistle.start(t);
+                whistle.stop(t + 0.35);
+
+                const len = Math.floor(ctx.sampleRate * 0.2);
+                const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let j = 0; j < len; j++) {
+                    data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 2);
+                }
+                const boom = ctx.createBufferSource();
+                boom.buffer = buf;
+                const gain = ctx.createGain();
+                gain.gain.value = this.volume * 0.4;
+                boom.connect(gain);
+                gain.connect(ctx.destination);
+                boom.start(t + 0.3);
+            }
+        } catch (_) {}
+    }
+
+    // Magical twinkling
+    playStars() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            [659, 880, 1047, 1319, 1568].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const t = ctx.currentTime + i * 0.1;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(this.volume * 0.25, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                osc.start(t);
+                osc.stop(t + 0.6);
+            });
+        } catch (_) {}
+    }
+
+    // Romantic harp
+    playHearts() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            [523, 659, 784, 880, 1047, 1175].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const t = ctx.currentTime + i * 0.12;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(this.volume * 0.3, t + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+                osc.start(t);
+                osc.stop(t + 0.8);
+            });
+        } catch (_) {}
+    }
+
+    // Cash register
+    playMoney() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+            osc1.type = 'triangle';
+            osc2.type = 'sine';
+            osc1.frequency.setValueAtTime(1200, ctx.currentTime);
+            osc2.frequency.setValueAtTime(1600, ctx.currentTime);
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(this.volume * 0.5, ctx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            osc1.start(ctx.currentTime);
+            osc2.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.4);
+            osc2.stop(ctx.currentTime + 0.4);
+        } catch (_) {}
+    }
+
+    // Roaring fire
+    playFlames() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            const len = Math.floor(ctx.sampleRate * 2);
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.3 * Math.sin(i * 0.01);
+            }
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const osc = ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(60, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(90, ctx.currentTime + 2);
+            const noiseGain = ctx.createGain();
+            const oscGain = ctx.createGain();
+            const mainGain = ctx.createGain();
+            noiseGain.gain.value = this.volume * 0.4;
+            oscGain.gain.setValueAtTime(this.volume * 0.3, ctx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+            mainGain.gain.value = 1;
+            src.connect(noiseGain);
+            osc.connect(oscGain);
+            noiseGain.connect(mainGain);
+            oscGain.connect(mainGain);
+            mainGain.connect(ctx.destination);
+            src.start(ctx.currentTime);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 2);
+        } catch (_) {}
+    }
+
+    // Wind blowing
+    playSnow() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            const len = Math.floor(ctx.sampleRate * 2.5);
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.15 * Math.sin(i * 0.005);
+            }
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 800;
+            const gain = ctx.createGain();
+            gain.gain.value = this.volume * 0.3;
+            src.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            src.start(ctx.currentTime);
+        } catch (_) {}
+    }
+
+    // Thunder and lightning
+    playLightning() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            for (let i = 0; i < 4; i++) {
+                const t = ctx.currentTime + i * 0.4;
+                const len = Math.floor(ctx.sampleRate * 0.6);
+                const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let j = 0; j < len; j++) {
+                    data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 1.2);
+                }
+                const src = ctx.createBufferSource();
+                src.buffer = buf;
+                const osc = ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, t);
+                osc.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+                const noiseGain = ctx.createGain();
+                const oscGain = ctx.createGain();
+                const mainGain = ctx.createGain();
+                noiseGain.gain.value = this.volume * 0.5;
+                oscGain.gain.setValueAtTime(this.volume * 0.4, t);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                mainGain.gain.value = 1;
+                src.connect(noiseGain);
+                osc.connect(oscGain);
+                noiseGain.connect(mainGain);
+                oscGain.connect(mainGain);
+                mainGain.connect(ctx.destination);
+                src.start(t);
+                osc.start(t);
+                osc.stop(t + 0.6);
+            }
+        } catch (_) {}
+    }
 }
 
 export const soundEngine = new SoundEngine();
