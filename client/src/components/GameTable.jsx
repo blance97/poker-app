@@ -172,6 +172,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         case 'flames': soundEngine.playFlames(); break;
                         case 'snow': soundEngine.playSnow(); break;
                         case 'lightning': soundEngine.playLightning(); break;
+                        case 'robot': soundEngine.playRobotWin(); break;
                         case 'confetti': soundEngine.playConfetti(); break;
                         default: soundEngine.playConfetti(); break;
                     }
@@ -179,6 +180,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             }
 
             // Award points if we won
+            const myWin = gameState.winners.find(w => w.playerId === player.id);
             if (myWin) {
                 const myResult = gameState.showdownResults?.find(r => r.playerId === player.id);
                 const { profile: p, newAchievements } = awardHandWin(profileRef.current, {
@@ -466,7 +468,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             {showResults && gameState.winners && !gameState.gameOver && (() => {
                 const firstWinnerId = gameState.winners[0].playerId;
                 const winnerPlayer = gameState.players.find(p => p.id === firstWinnerId);
-                const animCss = winnerPlayer ? (winnerPlayer.winAnimation || (winnerPlayer.isCPU ? 'lightning' : 'confetti')) : 'confetti';
+                const animCss = winnerPlayer ? (winnerPlayer.winAnimation || (winnerPlayer.isCPU ? 'robot' : 'confetti')) : 'confetti';
 
                 return (
                     <div className={`celebration-layer celebration-layer--${animCss}`} aria-hidden="true" data-opponent-count={opponentPositions.length}>
@@ -480,7 +482,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                                     />
                                 ))
                             )
-                            : Array.from({ length: 80 }).map((_, i) => (
+                            : Array.from({ length: animCss === 'robot' ? 10 : 80 }).map((_, i) => (
                                 <div key={i} className="celebration-layer__piece" style={{ '--ci': i }} />
                             ))
                         }

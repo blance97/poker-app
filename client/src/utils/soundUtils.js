@@ -41,7 +41,7 @@ class SoundEngine {
             src.connect(gain);
             gain.connect(ctx.destination);
             src.start();
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Short metallic clink — chip placed
@@ -60,7 +60,7 @@ class SoundEngine {
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.13);
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.13);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Ascending major arpeggio — you win!
@@ -82,7 +82,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.5);
             });
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Descending triangle — fold
@@ -101,7 +101,7 @@ class SoundEngine {
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.22);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Soft noise tap — check / knock on table
@@ -122,7 +122,7 @@ class SoundEngine {
             src.connect(gain);
             gain.connect(ctx.destination);
             src.start();
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Rising sine — raise / bet
@@ -141,7 +141,7 @@ class SoundEngine {
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.2);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Double ping — your turn alert
@@ -163,7 +163,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.28);
             });
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Low sawtooth chord — all in
@@ -185,7 +185,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.55);
             });
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Ascending triangle scale — blinds increase
@@ -207,7 +207,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.35);
             });
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Ticking urgency — last 10 seconds of timer
@@ -225,7 +225,7 @@ class SoundEngine {
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.05);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Gun shot — rapid fire burst
@@ -270,7 +270,7 @@ class SoundEngine {
             src.start(t);
             osc.start(t);
             osc.stop(t + 0.12);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Machine gun burst — multiple rapid shots
@@ -300,7 +300,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.15);
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Fireworks explosion sound
@@ -336,7 +336,7 @@ class SoundEngine {
                 gain.connect(ctx.destination);
                 boom.start(t + 0.3);
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Magical twinkling
@@ -358,7 +358,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.6);
             });
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Romantic harp
@@ -380,7 +380,7 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.8);
             });
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Cash register
@@ -405,7 +405,7 @@ class SoundEngine {
             osc2.start(ctx.currentTime);
             osc1.stop(ctx.currentTime + 0.4);
             osc2.stop(ctx.currentTime + 0.4);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Roaring fire
@@ -440,7 +440,7 @@ class SoundEngine {
             src.start(ctx.currentTime);
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 2);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Wind blowing
@@ -465,7 +465,7 @@ class SoundEngine {
             filter.connect(gain);
             gain.connect(ctx.destination);
             src.start(ctx.currentTime);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // Thunder and lightning
@@ -503,7 +503,48 @@ class SoundEngine {
                 osc.start(t);
                 osc.stop(t + 0.6);
             }
-        } catch (_) {}
+        } catch (_) { }
+    }
+
+    // Robotic processing / computing sound
+    playRobotWin() {
+        if (this.muted) return;
+        try {
+            const ctx = this._getCtx();
+            // Rapid series of high-pitched square-wave bleeps
+            for (let i = 0; i < 15; i++) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.type = 'square';
+                // Random computer frequencies
+                const freq = 400 + Math.random() * 1600;
+                const t = ctx.currentTime + i * 0.06;
+
+                osc.frequency.setValueAtTime(freq, t);
+
+                gain.gain.setValueAtTime(this.volume * 0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+                osc.start(t);
+                osc.stop(t + 0.05);
+            }
+
+            // Mechanical bass sweep
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(150, ctx.currentTime);
+            osc2.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 1.0);
+            gain2.gain.setValueAtTime(this.volume * 0.3, ctx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+            osc2.start(ctx.currentTime);
+            osc2.stop(ctx.currentTime + 1.0);
+        } catch (_) { }
     }
 }
 

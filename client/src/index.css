@@ -1732,6 +1732,38 @@ body {
   font-size: 26px;
 }
 
+/* ── 8. ROBOT (3D rotating robot heads) ── */
+.celebration-layer--robot {
+  perspective: 1000px;
+}
+
+.celebration-layer--robot .celebration-layer__piece {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform-style: preserve-3d;
+  animation: cel-robot-3d 3s ease-in-out calc(var(--ci) * 0.1s) forwards;
+}
+
+.celebration-layer--robot .celebration-layer__piece::before {
+  content: '🤖';
+  font-size: 40px;
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8));
+}
+
+.celebration-layer--robot .celebration-layer__piece:nth-child(even)::before {
+  font-size: 55px;
+  filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.8));
+}
+
+.celebration-layer--robot .celebration-layer__piece:nth-child(3n)::before {
+  font-size: 65px;
+  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.8));
+}
+
 /* ── 8. LIGHTNING ── */
 .celebration-layer--lightning .celebration-layer__piece {
   width: 8px;
@@ -1741,28 +1773,24 @@ body {
   top: 0;
   animation: cel-bolt 0.3s linear calc(var(--ci) * 0.12s) forwards;
   box-shadow: 0 0 20px rgba(147, 197, 253, 1), 0 0 40px rgba(59, 130, 246, 1);
-  clip-path: polygon(
-    40% 0%,
-    50% 30%,
-    60% 30%,
-    45% 60%,
-    55% 60%,
-    50% 100%
-  );
+  clip-path: polygon(40% 0%,
+      50% 30%,
+      60% 30%,
+      45% 60%,
+      55% 60%,
+      50% 100%);
 }
 
 .celebration-layer--lightning .celebration-layer__piece:nth-child(even) {
   height: 150px;
   width: 10px;
-  clip-path: polygon(
-    35% 0%,
-    55% 25%,
-    65% 25%,
-    40% 55%,
-    60% 55%,
-    45% 80%,
-    50% 100%
-  );
+  clip-path: polygon(35% 0%,
+      55% 25%,
+      65% 25%,
+      40% 55%,
+      60% 55%,
+      45% 80%,
+      50% 100%);
 }
 
 .celebration-layer--lightning::after {
@@ -1780,9 +1808,7 @@ body {
   top: 50%;
   left: 50%;
   /* Shoot toward target opponent positions */
-  --base-angle: calc(
-    (var(--target-pos, 0) * 45deg) - 90deg
-  );
+  --base-angle: calc((var(--target-pos, 0) * 45deg) - 90deg);
   --angle: calc(var(--base-angle) + (var(--ci) - 7) * 8deg);
   --distance: calc(700px + var(--ci) * 30px);
   --duration: calc(2s + var(--ci) * 0.08s);
@@ -1909,6 +1935,29 @@ body {
     opacity: 0;
     transform: translate(calc((var(--ci) - 20) * 14px),
         calc((var(--ci) * 7 % 40 - 20) * 10px)) scale(0.3);
+  }
+}
+
+/* 3D Rotating Robot Head */
+@keyframes cel-robot-3d {
+  0% {
+    opacity: 0;
+    transform: translate(calc((var(--ci) - 20) * 10px), 100vh) rotateX(0deg) rotateY(0deg) scale(0.2);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translate(calc((var(--ci) - 20) * 15px), 20vh) rotateX(72deg) rotateY(180deg) scale(1.5);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translate(calc((var(--ci) - 20) * 20px), -20vh) rotateX(288deg) rotateY(720deg) scale(2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc((var(--ci) - 20) * 25px), -50vh) rotateX(360deg) rotateY(900deg) scale(0.5);
   }
 }
 
@@ -2154,7 +2203,9 @@ body {
 
 /* Flame flicker effect */
 @keyframes flame-flicker {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1) rotate(0deg);
     opacity: 1;
   }
@@ -2177,7 +2228,9 @@ body {
 
 /* Inferno glow overlay */
 @keyframes inferno-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.6;
   }
 
@@ -3873,6 +3926,42 @@ body {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.profile-panel__points-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+
+.profile-panel__points-info-title {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.profile-panel__points-info-list {
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-panel__points-info-list li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.profile-panel__points-info-list span:last-child {
+  color: var(--accent-gold-light);
+  font-weight: 500;
 }
 
 /* Achievements */

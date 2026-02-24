@@ -67,6 +67,16 @@ export default function Profile({ profile, onProfileChange, onClose }) {
                                 <span className="profile-panel__stat-val">{val}</span>
                             </div>
                         ))}
+
+                        <div className="profile-panel__points-info">
+                            <h4 className="profile-panel__points-info-title">How to Earn Points</h4>
+                            <ul className="profile-panel__points-info-list">
+                                <li><span>Win a Hand</span> <span>+10</span></li>
+                                <li><span>Pot Bonus</span> <span>+1 per 100 chips</span></li>
+                                <li><span>Win the Game</span> <span>+50</span></li>
+                                <li><span>Achievements</span> <span>Varies</span></li>
+                            </ul>
+                        </div>
                     </div>
                 )}
 

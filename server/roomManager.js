@@ -159,7 +159,7 @@ class RoomManager {
             name: cpuName,
             isCPU: true,
             avatar: 'default',
-            winAnimation: 'lightning',
+            winAnimation: 'robot',
             difficulty,
         };
 
@@ -282,7 +282,7 @@ class RoomManager {
                 id: p.id,
                 name: p.name,
                 avatar: p.avatar || 'default',
-                winAnimation: p.winAnimation || (p.isCPU ? 'lightning' : 'confetti'),
+                winAnimation: p.winAnimation || (p.isCPU ? 'robot' : 'confetti'),
                 isCPU: p.isCPU || false,
                 difficulty: p.difficulty,
             })),
