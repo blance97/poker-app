@@ -30,7 +30,7 @@ class RoomManager {
             gameType,
             status: 'waiting', // waiting | playing | finished
             maxPlayers: options.maxPlayers || 8,
-            players: [{ id: hostPlayer.id, name: hostPlayer.name, avatar: hostPlayer.avatar || 'default', isCPU: false }],
+            players: [{ id: hostPlayer.id, name: hostPlayer.name, avatar: hostPlayer.avatar || 'default', winAnimation: hostPlayer.winAnimation || 'confetti', isCPU: false }],
             game: null,
             options: {
                 smallBlind: options.smallBlind || 10,
@@ -72,7 +72,7 @@ class RoomManager {
 
         if (room.players.length >= room.maxPlayers) return { error: 'Room is full' };
 
-        const roomPlayer = { id: player.id, name: player.name, avatar: player.avatar || 'default', isCPU: false };
+        const roomPlayer = { id: player.id, name: player.name, avatar: player.avatar || 'default', winAnimation: player.winAnimation || 'confetti', isCPU: false };
         room.players.push(roomPlayer);
 
         // If game is in progress, create playerState (room.players and game.players share
@@ -158,6 +158,8 @@ class RoomManager {
             id: `cpu_${cpuIdCounter}`,
             name: cpuName,
             isCPU: true,
+            avatar: 'default',
+            winAnimation: 'lightning',
             difficulty,
         };
 
@@ -279,6 +281,8 @@ class RoomManager {
             players: room.players.map(p => ({
                 id: p.id,
                 name: p.name,
+                avatar: p.avatar || 'default',
+                winAnimation: p.winAnimation || (p.isCPU ? 'lightning' : 'confetti'),
                 isCPU: p.isCPU || false,
                 difficulty: p.difficulty,
             })),

@@ -49,18 +49,19 @@ io.on('connection', (socket) => {
 
     // Player sets their name
     socket.on('player:setName', (data, callback) => {
-        const name   = typeof data === 'string' ? data : data.name;
+        const name = typeof data === 'string' ? data : data.name;
         const avatar = typeof data === 'object' ? (data.avatar || 'default') : 'default';
+        const winAnimation = typeof data === 'object' ? (data.winAnimation || 'confetti') : 'confetti';
         const playerId = socket.id;
-        connectedPlayers.set(socket.id, { id: playerId, name, avatar, roomId: null });
+        connectedPlayers.set(socket.id, { id: playerId, name, avatar, winAnimation, roomId: null });
         logger.info('SOCKET', `Player registered: ${name} (${playerId})`);
         callback({ id: playerId, name });
     });
 
     // Player reconnects after a page refresh
-    socket.on('player:reconnect', ({ name, roomId, avatar = 'default' }, callback) => {
+    socket.on('player:reconnect', ({ name, roomId, avatar = 'default', winAnimation = 'confetti' }, callback) => {
         const playerId = socket.id;
-        connectedPlayers.set(socket.id, { id: playerId, name, avatar, roomId });
+        connectedPlayers.set(socket.id, { id: playerId, name, avatar, winAnimation, roomId });
         logger.info('SOCKET', `Player reconnecting: ${name} (${playerId}) to room ${roomId}`);
 
         if (roomId) {
@@ -93,17 +94,21 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Player updates their avatar mid-session
-    socket.on('player:setAvatar', (avatar) => {
+    // Player updates their profile mid-session
+    socket.on('player:setProfile', (data) => {
         const player = connectedPlayers.get(socket.id);
         if (!player) return;
-        player.avatar = avatar;
-        // Also update room.players entry so the game state reflects the new avatar
+        if (data.avatar) player.avatar = data.avatar;
+        if (data.winAnimation) player.winAnimation = data.winAnimation;
+        // Also update room.players entry so the game state reflects the new profile
         if (player.roomId) {
             const room = roomManager.rooms.get(player.roomId);
             if (room) {
                 const rp = room.players.find(p => p.id === player.id);
-                if (rp) rp.avatar = avatar;
+                if (rp) {
+                    if (data.avatar) rp.avatar = data.avatar;
+                    if (data.winAnimation) rp.winAnimation = data.winAnimation;
+                }
                 broadcastGameState(player.roomId);
             }
         }

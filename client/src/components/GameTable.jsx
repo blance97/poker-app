@@ -157,21 +157,24 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             setWinnerFx(fx);
             setTimeout(() => setWinnerFx({}), 3200);
 
-            // Play sound effect based on animation type if I won
-            const myWin = gameState.winners.find(w => w.playerId === player.id);
-            if (myWin) {
-                const animationType = getWinAnimationCSS(profile);
-                switch (animationType) {
-                    case 'guns': soundEngine.playMachineGun(); break;
-                    case 'fireworks': soundEngine.playFireworks(); break;
-                    case 'stars': soundEngine.playStars(); break;
-                    case 'hearts': soundEngine.playHearts(); break;
-                    case 'money': soundEngine.playMoney(); break;
-                    case 'flames': soundEngine.playFlames(); break;
-                    case 'snow': soundEngine.playSnow(); break;
-                    case 'lightning': soundEngine.playLightning(); break;
-                    case 'confetti': soundEngine.playConfetti(); break;
-                    default: soundEngine.playConfetti(); break;
+            // Play sound effect based on the first winner's animation
+            if (gameState.winners.length > 0) {
+                const firstWinnerId = gameState.winners[0].playerId;
+                const winnerPlayer = gameState.players.find(p => p.id === firstWinnerId);
+                if (winnerPlayer) {
+                    const animationType = winnerPlayer.winAnimation || (winnerPlayer.isCPU ? 'lightning' : 'confetti');
+                    switch (animationType) {
+                        case 'guns': soundEngine.playMachineGun(); break;
+                        case 'fireworks': soundEngine.playFireworks(); break;
+                        case 'stars': soundEngine.playStars(); break;
+                        case 'hearts': soundEngine.playHearts(); break;
+                        case 'money': soundEngine.playMoney(); break;
+                        case 'flames': soundEngine.playFlames(); break;
+                        case 'snow': soundEngine.playSnow(); break;
+                        case 'lightning': soundEngine.playLightning(); break;
+                        case 'confetti': soundEngine.playConfetti(); break;
+                        default: soundEngine.playConfetti(); break;
+                    }
                 }
             }
 
@@ -460,24 +463,30 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             </div>
 
             {/* Non-blocking full-screen celebration — plays winner's equipped animation */}
-            {showResults && gameState.winners && !gameState.gameOver && (
-                <div className={`celebration-layer celebration-layer--${getWinAnimationCSS(profile)}`} aria-hidden="true" data-opponent-count={opponentPositions.length}>
-                    {getWinAnimationCSS(profile) === 'guns'
-                        ? opponentPositions.flatMap(pos =>
-                            Array.from({ length: 15 }).map((_, i) => (
-                                <div
-                                    key={`${pos}-${i}`}
-                                    className="celebration-layer__piece"
-                                    style={{ '--ci': i, '--target-pos': pos }}
-                                />
+            {showResults && gameState.winners && !gameState.gameOver && (() => {
+                const firstWinnerId = gameState.winners[0].playerId;
+                const winnerPlayer = gameState.players.find(p => p.id === firstWinnerId);
+                const animCss = winnerPlayer ? (winnerPlayer.winAnimation || (winnerPlayer.isCPU ? 'lightning' : 'confetti')) : 'confetti';
+
+                return (
+                    <div className={`celebration-layer celebration-layer--${animCss}`} aria-hidden="true" data-opponent-count={opponentPositions.length}>
+                        {animCss === 'guns'
+                            ? opponentPositions.flatMap(pos =>
+                                Array.from({ length: 15 }).map((_, i) => (
+                                    <div
+                                        key={`${pos}-${i}`}
+                                        className="celebration-layer__piece"
+                                        style={{ '--ci': i, '--target-pos': pos }}
+                                    />
+                                ))
+                            )
+                            : Array.from({ length: 80 }).map((_, i) => (
+                                <div key={i} className="celebration-layer__piece" style={{ '--ci': i }} />
                             ))
-                          )
-                        : Array.from({ length: 80 }).map((_, i) => (
-                            <div key={i} className="celebration-layer__piece" style={{ '--ci': i }} />
-                          ))
-                    }
-                </div>
-            )}
+                        }
+                    </div>
+                );
+            })()}
 
             {/* Deal Next Hand — centered below felt */}
             {showResults && gameState.winners && !gameState.gameOver && (

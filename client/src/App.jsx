@@ -38,15 +38,17 @@ export default function App() {
         const session = loadSession();
         if (session && session.name && !player) {
             setReconnecting(true);
-            const avatar = loadProfile().avatar || 'default';
-            reconnect(session.name, session.roomId, avatar).then((result) => {
+            const p = loadProfile();
+            const avatar = p.avatar || 'default';
+            const winAnimation = p.winAnimation || 'confetti';
+            reconnect(session.name, session.roomId, avatar, winAnimation).then((result) => {
                 setReconnecting(false);
                 if (result && result.view) {
                     setCurrentRoomId(result.roomId || null);
                     setView(result.view);
                 } else {
                     // Fallback: session info was stale, go to lobby
-                    setName(session.name).then(() => {
+                    setName(session.name, session.avatar || 'default', session.winAnimation || 'confetti').then(() => {
                         setView('lobby');
                     });
                 }
@@ -74,7 +76,8 @@ export default function App() {
     const handleLogin = async (e) => {
         e.preventDefault();
         if (playerName.trim()) {
-            await setName(playerName.trim(), loadProfile().avatar || 'default');
+            const p = loadProfile();
+            await setName(playerName.trim(), p.avatar || 'default', p.winAnimation || 'confetti');
             saveSession({ name: playerName.trim(), roomId: null, view: 'lobby' });
             setView('lobby');
         }
