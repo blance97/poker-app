@@ -379,6 +379,42 @@ function broadcastGameState(roomId) {
     }
 }
 
+// Bot personality chat lines
+const BOT_CHAT = {
+    aggressive: {
+        raise: ["I'm coming for you!", "Feel the pressure.", "All or nothing.", "Raise it up!"],
+        win:   ["Crushed it.", "That's how it's done.", "Bow down.", "Too easy."],
+        fold:  ["Smart move.", "You got lucky.", "I'll be back."],
+    },
+    passive: {
+        raise: ["I suppose I'll bet...", "Going in cautiously.", "Small raise."],
+        win:   ["Oh my, I won!", "Lucky me!", "That worked out."],
+        fold:  ["Too risky for me.", "I'll sit this one out."],
+    },
+    bluffer: {
+        raise: ["Nothing to see here.", "I've got the goods.", "You should fold."],
+        win:   ["Told you.", "Read me wrong?", "Surprise!"],
+        fold:  ["Fine, you caught me.", "This time."],
+    },
+    balanced: {
+        raise: ["Raising.", "I like my hand.", "Let's see what you've got."],
+        win:   ["Good hand.", "Well played.", "I'll take it."],
+        fold:  ["Not worth it.", "Folding here."],
+    },
+    maniac: {
+        raise: ["ALL IN EVERY HAND!", "YOLO!!!", "LET'S GOOO"],
+        win:   ["CHAOS REIGNS", "WOOOO", "EZ GG"],
+        fold:  ["...fine.", "temporary setback"],
+    },
+};
+
+function getBotChat(personality, event) {
+    const lines = BOT_CHAT[personality]?.[event];
+    if (!lines || lines.length === 0) return null;
+    if (Math.random() > 0.35) return null; // ~35% chance to chat
+    return lines[Math.floor(Math.random() * lines.length)];
+}
+
 function processCPUTurns(roomId) {
     const cpuAction = roomManager.getCPUAction(roomId);
     if (!cpuAction) return;
@@ -401,9 +437,44 @@ function processCPUTurns(roomId) {
         isCPU: true,
     });
 
+    // Bot chat based on personality + action
+    const personality = cpuPlayer.personality || 'balanced';
+    const chatEvent = cpuAction.action === 'raise' ? 'raise' : cpuAction.action === 'fold' ? 'fold' : null;
+    if (chatEvent) {
+        const line = getBotChat(personality, chatEvent);
+        if (line) {
+            roomManager.addMessage(roomId, cpuPlayer.id, cpuPlayer.name, line);
+            io.to(roomId).emit('chat:message', {
+                playerId: cpuPlayer.id,
+                playerName: cpuPlayer.name,
+                text: line,
+                timestamp: Date.now(),
+            });
+        }
+    }
+
     broadcastGameState(roomId);
 
     if (result.isRoundOver) {
+        // Bot win chat
+        const updatedState = roomManager.getGameState(roomId, 'spectator');
+        if (updatedState?.winners) {
+            const winnerEntry = updatedState.winners.find(w => w.playerId === cpuPlayer.id);
+            if (winnerEntry) {
+                const winLine = getBotChat(personality, 'win');
+                if (winLine) {
+                    setTimeout(() => {
+                        roomManager.addMessage(roomId, cpuPlayer.id, cpuPlayer.name, winLine);
+                        io.to(roomId).emit('chat:message', {
+                            playerId: cpuPlayer.id,
+                            playerName: cpuPlayer.name,
+                            text: winLine,
+                            timestamp: Date.now(),
+                        });
+                    }, 800);
+                }
+            }
+        }
         // Give 5s to see the board before prompting for next hand
         setTimeout(() => {
             io.to(roomId).emit('game:roundOver');

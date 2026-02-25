@@ -8,7 +8,12 @@ import Profile from './Profile';
 import Card from './Card';
 import { formatChips } from '../utils/cardUtils';
 import { soundEngine } from '../utils/soundUtils';
-import { loadProfile, awardHandWin, recordHandPlayed, getAvatarIcon, getWinAnimationCSS, AVATAR_WIN_FX } from '../utils/profileUtils';
+import {
+    loadProfile, awardHandWin, recordHandPlayed, resetWinStreak,
+    getAvatarIcon, getWinAnimationCSS, AVATAR_WIN_FX,
+    getRank, applyTableTheme, applyCardBack,
+    updateDailyProgress, getDailyChallenges,
+} from '../utils/profileUtils';
 
 // Only label positions that matter to beginners (D chip handles Dealer)
 function getPositionLabel(posFromDealer, numPlayers) {
@@ -35,6 +40,7 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     const [showProfile, setShowProfile] = useState(false);
     const [achievementToasts, setAchievementToasts] = useState([]);
     const [winnerFx, setWinnerFx] = useState({}); // playerId → { emoji, color }
+    const [challengeToasts, setChallengeToasts] = useState([]);
 
     const prevPhaseRef = useRef(null);
     const prevHandNumberRef = useRef(null);
@@ -44,6 +50,13 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
     const chipsSnapshotRef = useRef(null); // chips at start of current hand
     const lastChipsRef = useRef(null);     // chips from previous state update
     const awardedHandRef = useRef(null);   // hand number we last awarded points for
+
+    // Apply stored table theme + card back on mount
+    useEffect(() => {
+        const p = profileRef.current;
+        applyTableTheme(p.tableTheme || 'classic');
+        applyCardBack(p.cardBack || 'default');
+    }, []);
 
     useEffect(() => {
         const handleStateUpdate = (state) => {
@@ -106,6 +119,13 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         setTimeout(() => setAchievementToasts(prev => prev.filter(t => t._id !== id)), 4000);
     }, []);
 
+    // Helper: add challenge-completed toast
+    const showChallengeToast = useCallback((ch) => {
+        const id = Date.now() + Math.random();
+        setChallengeToasts(prev => [...prev, { ...ch, _id: id }]);
+        setTimeout(() => setChallengeToasts(prev => prev.filter(t => t._id !== id)), 4500);
+    }, []);
+
     // Sound triggers + profile tracking on game state changes
     useEffect(() => {
         if (!gameState) return;
@@ -123,6 +143,9 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
             profileRef.current = p;
             setProfile(p);
             newAchievements.forEach(showAchievementToast);
+            // Daily challenge: hand played
+            const { newlyCompleted: chCmp1 } = updateDailyProgress('handPlayed');
+            chCmp1.forEach(showChallengeToast);
 
             if (gameState.blindsJustIncreased) {
                 soundEngine.playBlindsUp();
@@ -179,20 +202,45 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                 }
             }
 
-            // Award points if we won
+            // Award points if we won, reset streak if we lost
             const myWin = gameState.winners.find(w => w.playerId === player.id);
             if (myWin) {
                 const myResult = gameState.showdownResults?.find(r => r.playerId === player.id);
+                const isFoldWin = myWin.hand === 'Winner by fold';
+                const wasAllIn = gameState.myState?.allIn;
+                const chipsBeforeHand = chipsSnapshotRef.current ?? gameState.myState?.chips;
+
                 const { profile: p, newAchievements } = awardHandWin(profileRef.current, {
                     amount: myWin.amount,
                     hand: myResult?.hand || myWin.hand,
-                    wasAllIn: gameState.myState?.allIn,
-                    chipsBeforeHand: chipsSnapshotRef.current ?? gameState.myState?.chips,
+                    wasAllIn,
+                    chipsBeforeHand,
                     isGameWin: gameState.gameOver,
                 });
                 profileRef.current = p;
                 setProfile(p);
                 newAchievements.forEach(showAchievementToast);
+
+                // Daily challenge: win event
+                const { newlyCompleted: chCmp, rewardEarned } = updateDailyProgress('win', {
+                    amount: myWin.amount,
+                    foldWin: isFoldWin,
+                    wasAllIn,
+                    chipsBeforeHand,
+                });
+                chCmp.forEach(showChallengeToast);
+                if (rewardEarned > 0) {
+                    const np = { ...profileRef.current, points: (profileRef.current.points || 0) + rewardEarned };
+                    profileRef.current = np;
+                    setProfile(np);
+                }
+            } else {
+                // Player lost: reset win streak + daily streak
+                const p = resetWinStreak(profileRef.current);
+                profileRef.current = p;
+                setProfile(p);
+                const { newlyCompleted: chCmp2 } = updateDailyProgress('loss');
+                chCmp2.forEach(showChallengeToast);
             }
         }
 
@@ -336,6 +384,9 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
         showdown: 'Showdown',
     }[gameState.phase] || gameState.phase;
 
+    // Rank badge for local player's seat
+    const myRank = getRank(profile);
+
     // Winner info shown on seats (only when round is over)
     const winnerInfoMap = {};
     if (showResults && gameState.winners) {
@@ -431,6 +482,11 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                         winFx={p ? winnerFx[p.id] : null}
                         winnerInfo={p ? winnerInfoMap[p.id] : null}
                         onShowCards={p && p.id === player.id && canShowMyCards ? handleShowCards : null}
+                        rankBadge={
+                            p && p.id === player.id ? myRank
+                            : p && p.isCPU && p.personality ? { icon: '', name: p.personality, color: '#94a3b8' }
+                            : null
+                        }
                     />
                 ))}
 
@@ -568,8 +624,11 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                     onProfileChange={(p) => {
                         profileRef.current = p;
                         setProfile(p);
-                        // Re-broadcast new avatar so seat updates for everyone
-                        socket.emit('player:setAvatar', p.avatar || 'default');
+                        // Sync avatar + win animation to server so other players see updates
+                        socket.emit('player:setProfile', {
+                            avatar: p.avatar || 'default',
+                            winAnimation: p.winAnimation || 'confetti',
+                        });
                     }}
                     onClose={() => setShowProfile(false)}
                 />
@@ -584,6 +643,16 @@ export default function GameTable({ socket, player, roomId, onLeave }) {
                             <div className="achievement-toast__title">Achievement Unlocked!</div>
                             <div className="achievement-toast__name">{ach.name}</div>
                             {ach.reward > 0 && <div className="achievement-toast__reward">+{ach.reward} pts</div>}
+                        </div>
+                    </div>
+                ))}
+                {challengeToasts.map(ch => (
+                    <div key={ch._id} className="achievement-toast achievement-toast--challenge">
+                        <span className="achievement-toast__icon">{ch.icon}</span>
+                        <div className="achievement-toast__text">
+                            <div className="achievement-toast__title">Challenge Complete!</div>
+                            <div className="achievement-toast__name">{ch.desc}</div>
+                            <div className="achievement-toast__reward">+{ch.reward} pts</div>
                         </div>
                     </div>
                 ))}

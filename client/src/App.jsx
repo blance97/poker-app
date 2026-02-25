@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from './hooks/useSocket';
 import Lobby from './components/Lobby';
 import GameTable from './components/GameTable';
-import { loadProfile } from './utils/profileUtils';
+import { loadProfile, applyTableTheme, applyCardBack } from './utils/profileUtils';
 
 const SESSION_KEY = 'poker_session';
 
@@ -23,6 +23,13 @@ function loadSession() {
 function clearSession() {
     sessionStorage.removeItem(SESSION_KEY);
 }
+
+// Apply stored theme/card back immediately on load
+(function initAppearance() {
+    const p = loadProfile();
+    applyTableTheme(p.tableTheme || 'classic');
+    applyCardBack(p.cardBack || 'default');
+})();
 
 export default function App() {
     const { socket, connected, player, setName, reconnect } = useSocket();

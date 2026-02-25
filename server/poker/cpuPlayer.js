@@ -5,12 +5,48 @@ const logger = require('../utils/logger');
 /**
  * CPU player AI for poker
  * Difficulty levels: 'easy', 'medium', 'hard'
+ * Personalities: 'aggressive', 'passive', 'bluffer', 'balanced', 'maniac'
  */
+
+const PERSONALITY_CHAT = {
+    aggressive: {
+        raise: ["I'm coming for you!", "Feel the pressure.", "All or nothing.", "Raise it up!"],
+        win:   ["Crushed it.", "That's how it's done.", "Bow down.", "Too easy."],
+        fold:  ["Smart move.", "You got lucky.", "I'll be back."],
+        bluff: ["You folded to THIS?", "Gotcha.", "Weak."],
+    },
+    passive: {
+        raise: ["I suppose I'll bet...", "Going in cautiously.", "Small raise."],
+        win:   ["Oh my, I won!", "Lucky me!", "That worked out.", "Phew!"],
+        fold:  ["Too risky for me.", "I'll sit this one out.", "Better safe than sorry."],
+        bluff: ["Oh, they actually folded!", "It worked!", "Surprising."],
+    },
+    bluffer: {
+        raise: ["Nothing to see here.", "I've got the goods.", "Trust me.", "You should fold."],
+        win:   ["Told you.", "Read me wrong?", "That's what bluffing does.", "Surprise!"],
+        fold:  ["Fine, you caught me.", "This time.", "Nice read."],
+        bluff: ["They believed it!", "Works every time.", "Poker face!"],
+    },
+    balanced: {
+        raise: ["Raising.", "I like my hand.", "Let's see what you've got."],
+        win:   ["Good hand.", "Well played.", "I'll take it.", "The math checked out."],
+        fold:  ["Not worth it.", "Folding here.", "Good bet."],
+        bluff: ["Interesting.", "Sometimes you gotta.", "The bluff lands."],
+    },
+    maniac: {
+        raise: ["ALL IN EVERY HAND", "YOLO!!!", "I CAME TO GAMBLE", "LET'S GOOO"],
+        win:   ["CHAOS REIGNS", "NEVER STOP BETTING", "WOOOO", "EZ GG"],
+        fold:  ["...fine.", "WHATEVER I'M COMING BACK", "temporary setback"],
+        bluff: ["IT WAS A BLUFF THE WHOLE TIME", "CHAOS POKER!!!", "NOTHING IS REAL"],
+    },
+};
+
 class CPUPlayer {
-    constructor(id, name, difficulty = 'medium') {
+    constructor(id, name, difficulty = 'medium', personality = 'balanced') {
         this.id = id;
         this.name = name;
         this.difficulty = difficulty;
+        this.personality = personality;
         this.isCPU = true;
     }
 
@@ -38,9 +74,9 @@ class CPUPlayer {
         const toCall = currentBet - myBet;
         const canCheck = toCall === 0;
 
-        logger.debug('CPU', `${this.name} strength=${adjustedStrength.toFixed(2)} toCall=${toCall} canCheck=${canCheck}`);
+        logger.debug('CPU', `${this.name} [${this.personality}] strength=${adjustedStrength.toFixed(2)} toCall=${toCall} canCheck=${canCheck}`);
 
-        // Decision thresholds based on difficulty
+        // Decision thresholds based on difficulty + personality
         const thresholds = this._getThresholds();
 
         // Very weak hand
@@ -58,14 +94,13 @@ class CPUPlayer {
         // Medium hand
         if (adjustedStrength < thresholds.raise) {
             if (canCheck) {
-                // Sometimes bet with medium hands
-                if (Math.random() < 0.3) {
-                    const betAmount = Math.min(myChips, Math.floor(pot * 0.5));
+                if (Math.random() < thresholds.medBetChance) {
+                    const betAmount = Math.min(myChips, Math.floor(pot * thresholds.betSizing));
                     if (betAmount > 0) return { action: 'raise', amount: betAmount };
                 }
                 return { action: 'check' };
             }
-            if (toCall <= myChips * 0.3) {
+            if (toCall <= myChips * thresholds.callThreshold) {
                 return { action: 'call' };
             }
             return { action: 'fold' };
@@ -73,9 +108,8 @@ class CPUPlayer {
 
         // Strong hand
         if (canCheck) {
-            // Bet or slow-play
-            if (Math.random() < 0.7) {
-                const betAmount = Math.min(myChips, Math.floor(pot * (0.5 + adjustedStrength * 0.5)));
+            if (Math.random() < thresholds.strongBetChance) {
+                const betAmount = Math.min(myChips, Math.floor(pot * (thresholds.betSizing + adjustedStrength * 0.5)));
                 if (betAmount > 0) return { action: 'raise', amount: betAmount };
             }
             return { action: 'check' };
@@ -83,8 +117,7 @@ class CPUPlayer {
 
         // Strong hand, need to call
         if (toCall <= myChips) {
-            // Consider raising
-            if (adjustedStrength > thresholds.bigRaise && Math.random() < 0.5) {
+            if (adjustedStrength > thresholds.bigRaise && Math.random() < thresholds.reraisChance) {
                 const raiseAmount = Math.min(myChips, toCall + Math.floor(pot * 0.75));
                 return { action: 'raise', amount: raiseAmount };
             }
@@ -92,10 +125,19 @@ class CPUPlayer {
         }
 
         // All-in decision
-        if (adjustedStrength > 0.7) {
+        if (adjustedStrength > thresholds.allInThreshold) {
             return { action: 'call' }; // all-in
         }
         return { action: 'fold' };
+    }
+
+    /** Get a random chat line for an action/event. Returns null if no chat. */
+    getChatLine(event) {
+        const lines = PERSONALITY_CHAT[this.personality]?.[event];
+        if (!lines || lines.length === 0) return null;
+        // ~40% chance to chat
+        if (Math.random() > 0.4) return null;
+        return lines[Math.floor(Math.random() * lines.length)];
     }
 
     _evaluatePreFlop(holeCards) {
@@ -109,7 +151,7 @@ class CPUPlayer {
         const highCard = Math.max(v1, v2);
         const gap = Math.abs(v1 - v2);
 
-        let strength = (highCard / 14) * 0.4; // base is high card value
+        let strength = (highCard / 14) * 0.4;
 
         if (isPair) {
             strength += 0.3 + (highCard / 14) * 0.2;
@@ -118,9 +160,8 @@ class CPUPlayer {
             strength += 0.05;
         }
         if (gap <= 2 && !isPair) {
-            strength += 0.05; // connected cards
+            strength += 0.05;
         }
-        // Premium hands
         if (isPair && highCard >= 12) strength = Math.max(strength, 0.8);
         if (highCard === 14 && Math.min(v1, v2) >= 12) strength = Math.max(strength, 0.7);
 
@@ -134,12 +175,55 @@ class CPUPlayer {
     }
 
     _getThresholds() {
-        const presets = {
-            easy: { fold: 0.2, raise: 0.5, bigRaise: 0.7, bluffChance: 0.3 },
-            medium: { fold: 0.25, raise: 0.55, bigRaise: 0.75, bluffChance: 0.15 },
-            hard: { fold: 0.3, raise: 0.6, bigRaise: 0.8, bluffChance: 0.1 },
+        // Base thresholds by difficulty
+        const base = {
+            easy:   { fold: 0.2,  raise: 0.5,  bigRaise: 0.7,  bluffChance: 0.3,  medBetChance: 0.3, strongBetChance: 0.7, betSizing: 0.5, callThreshold: 0.3, reraisChance: 0.5, allInThreshold: 0.7 },
+            medium: { fold: 0.25, raise: 0.55, bigRaise: 0.75, bluffChance: 0.15, medBetChance: 0.3, strongBetChance: 0.7, betSizing: 0.5, callThreshold: 0.3, reraisChance: 0.5, allInThreshold: 0.7 },
+            hard:   { fold: 0.3,  raise: 0.6,  bigRaise: 0.8,  bluffChance: 0.1,  medBetChance: 0.3, strongBetChance: 0.7, betSizing: 0.5, callThreshold: 0.3, reraisChance: 0.5, allInThreshold: 0.7 },
         };
-        return presets[this.difficulty] || presets.medium;
+        const t = { ...(base[this.difficulty] || base.medium) };
+
+        // Personality modifiers
+        switch (this.personality) {
+            case 'aggressive':
+                t.fold -= 0.1;
+                t.bluffChance += 0.1;
+                t.medBetChance = 0.6;
+                t.strongBetChance = 0.95;
+                t.betSizing = 0.75;
+                t.reraisChance = 0.75;
+                break;
+            case 'passive':
+                t.fold += 0.05;
+                t.bluffChance = 0.05;
+                t.medBetChance = 0.1;
+                t.strongBetChance = 0.4;
+                t.betSizing = 0.3;
+                t.callThreshold = 0.2;
+                t.reraisChance = 0.2;
+                break;
+            case 'bluffer':
+                t.bluffChance = 0.5;
+                t.fold -= 0.05;
+                t.medBetChance = 0.5;
+                t.betSizing = 0.6;
+                break;
+            case 'maniac':
+                t.fold = 0.05;
+                t.bluffChance = 0.7;
+                t.medBetChance = 0.8;
+                t.strongBetChance = 1.0;
+                t.betSizing = 1.0;
+                t.callThreshold = 0.9;
+                t.reraisChance = 0.9;
+                t.allInThreshold = 0.3;
+                break;
+            case 'balanced':
+            default:
+                break;
+        }
+
+        return t;
     }
 }
 

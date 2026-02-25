@@ -4203,3 +4203,197 @@ body {
     min-width: 180px;
   }
 }
+/* ═══════════════════════════════════════════════════════════════
+   NEW FEATURES: Ranks, Card Backs, Daily Challenges, Rank Badges
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Rank badge on seat ───────────────────────────────────────── */
+.seat__rank-badge {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+/* ── Profile rank display ─────────────────────────────────────── */
+.profile-panel__rank-badge {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.profile-panel__rank-progress {
+  padding: 6px 16px 10px;
+  background: rgba(0,0,0,0.15);
+}
+
+.profile-panel__rank-progress-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+/* ── Progress bar (used for rank + challenges) ────────────────── */
+.challenge-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+  flex: 1;
+}
+
+.challenge-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  transition: width 0.4s ease;
+}
+
+/* ── Daily Challenges tab ─────────────────────────────────────── */
+.profile-panel__challenges {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.profile-panel__challenges-heading {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-align: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.challenge-row {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: opacity 0.2s;
+}
+
+.challenge-row--done {
+  opacity: 0.55;
+  border-color: rgba(16,185,129,0.3);
+  background: rgba(16,185,129,0.06);
+}
+
+.challenge-row__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.challenge-row__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.challenge-row__desc {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.challenge-row__reward {
+  font-size: 0.75rem;
+  color: #fbbf24;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.challenge-row__progress-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.challenge-row__count {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── Challenge completion toast ───────────────────────────────── */
+.achievement-toast--challenge {
+  border-color: rgba(251,191,36,0.5);
+  background: linear-gradient(135deg, rgba(30,20,0,0.97), rgba(40,30,0,0.95));
+}
+
+.achievement-toast--challenge .achievement-toast__title {
+  color: #fbbf24;
+}
+
+/* ── Card back variants (data-card-back on :root) ─────────────── */
+
+/* Default – classic blue diagonal pattern */
+.card__back--default {
+  background: linear-gradient(135deg, #1e3a8a 25%, #1e40af 25%, #1e40af 50%, #1e3a8a 50%, #1e3a8a 75%, #1e40af 75%);
+  background-size: 8px 8px;
+}
+
+/* Red – classic red diagonal pattern */
+.card__back--red {
+  background: linear-gradient(135deg, #7f1d1d 25%, #991b1b 25%, #991b1b 50%, #7f1d1d 50%, #7f1d1d 75%, #991b1b 75%);
+  background-size: 8px 8px;
+}
+
+/* Black / Onyx – solid dark with subtle grid */
+.card__back--black {
+  background: #0f172a;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 10px 10px;
+}
+
+/* Wood / Walnut – warm wood grain */
+.card__back--wood {
+  background:
+    repeating-linear-gradient(
+      88deg,
+      rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px,
+      transparent 1px, transparent 8px
+    ),
+    linear-gradient(135deg, #78350f, #92400e, #6b3008, #7c3a10);
+}
+
+/* Gold – golden diamond grid */
+.card__back--gold {
+  background: #78350f;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(251,191,36,0.25) 0, rgba(251,191,36,0.25) 1px, transparent 0, transparent 50%),
+    repeating-linear-gradient(-45deg, rgba(251,191,36,0.25) 0, rgba(251,191,36,0.25) 1px, transparent 0, transparent 50%);
+  background-color: #b45309;
+  background-size: 12px 12px;
+}
+
+/* Space / Cosmic – deep space starfield */
+.card__back--space {
+  background: radial-gradient(ellipse at 30% 30%, #312e81, #0f0c29 70%);
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px);
+  background-size: 30px 30px, 15px 15px;
+  background-position: 0 0, 8px 8px;
+}
+
+/* Override the card__back base style for each variant */
+.card__back--default,
+.card__back--red,
+.card__back--black,
+.card__back--wood,
+.card__back--gold,
+.card__back--space {
+  border-radius: 4px;
+}
+

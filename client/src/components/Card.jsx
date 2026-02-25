@@ -6,10 +6,14 @@ export default function Card({ card, faceDown = false, small = false, dealDelay 
     const isHidden = faceDown || !card || card.rank === 'hidden';
     const delayStyle = dealDelay > 0 ? { animationDelay: `${dealDelay}s` } : {};
 
+    const cardBack = typeof document !== 'undefined'
+        ? (document.documentElement.getAttribute('data-card-back') || 'default')
+        : 'default';
+
     return (
         <div className={`card ${isHidden ? 'card--facedown' : ''} ${small ? 'card--small' : ''}`}>
             {isHidden ? (
-                <div className="card__back" style={delayStyle}>
+                <div className={`card__back card__back--${cardBack}`} style={delayStyle}>
                     <div className="card__back-pattern"></div>
                 </div>
             ) : (

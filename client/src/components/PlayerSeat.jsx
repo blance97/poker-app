@@ -9,7 +9,7 @@ const PARTICLE_OFFSETS = [
     { x: 25, y: -85 }, { x: 40, y: -65 }, { x: -10, y: -95 },
 ];
 
-export default function PlayerSeat({ player, isMe, position, positionLabel, emote, onKick, winFx, winnerInfo, onShowCards }) {
+export default function PlayerSeat({ player, isMe, position, positionLabel, emote, onKick, winFx, winnerInfo, onShowCards, rankBadge }) {
     if (!player) return <div className={`seat seat--empty seat--pos-${position}`}></div>;
 
     const { name, chips, holeCards, folded, allIn, isDealer, isCurrent, isCPU, currentBet, avatar } = player;
@@ -45,6 +45,11 @@ export default function PlayerSeat({ player, isMe, position, positionLabel, emot
 
             <div className="seat__info">
                 <span className="seat__name">{name}</span>
+                {rankBadge && (
+                    <span className="seat__rank-badge" style={rankBadge.color ? { color: rankBadge.color } : undefined}>
+                        {rankBadge.icon} {rankBadge.name}
+                    </span>
+                )}
                 <span className="seat__chips">{formatChips(chips)}</span>
             </div>
             <div className="seat__cards">

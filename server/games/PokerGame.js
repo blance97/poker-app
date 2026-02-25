@@ -70,6 +70,7 @@ class PokerGame extends BaseGame {
         this.communityCards = [];
         this.pot = 0;
         this.pots = []; // Reset pots
+        this._allContributions = {}; // cumulative chips per player across all streets
         this.currentBet = 0;
         this.lastRaiserIndex = -1;
         this.roundActions = 0;
@@ -404,54 +405,68 @@ class PokerGame extends BaseGame {
     }
 
     _distributeBetsToPots() {
-        // Collect all bets from this round
-        const bets = [];
+        // Accumulate this street's bets into cumulative per-player totals
+        if (!this._allContributions) this._allContributions = {};
         for (const p of this.players) {
             const ps = this.playerStates[p.id];
-            const bet = ps.currentBet;
-            if (bet > 0) {
-                bets.push({ id: p.id, amount: bet, isAllIn: ps.allIn });
+            if (ps.currentBet > 0) {
+                this._allContributions[p.id] = (this._allContributions[p.id] || 0) + ps.currentBet;
             }
         }
 
-        if (bets.length === 0) return;
+        // Recalculate all pots from scratch using cumulative contributions.
+        // This ensures one pot per all-in level regardless of how many streets
+        // have been bet, eliminating spurious extra side pots.
+        this.pots = this._recalcPotsFromContributions();
+    }
 
-        const maxBet = Math.max(...bets.map(b => b.amount));
+    _recalcPotsFromContributions() {
+        const contribs = this._allContributions || {};
 
-        // Side pots only form when a player goes ALL-IN for LESS than the max bet.
-        // Folded players who posted a smaller blind don't create side pots.
+        // Build per-player entries with total contributed, all-in flag, fold flag
+        const entries = [];
+        for (const p of this.players) {
+            const ps = this.playerStates[p.id];
+            const amount = contribs[p.id] || 0;
+            if (amount > 0) {
+                entries.push({ id: p.id, amount, isAllIn: ps.allIn, folded: ps.folded });
+            }
+        }
+
+        if (entries.length === 0) return [];
+
+        const maxContrib = Math.max(...entries.map(e => e.amount));
+
+        // Split levels come from all-in players who contributed less than the max.
+        // Folded players don't create split levels.
         const splitLevels = [...new Set(
-            bets.filter(b => b.isAllIn && b.amount < maxBet).map(b => b.amount)
+            entries.filter(e => e.isAllIn && !e.folded && e.amount < maxContrib).map(e => e.amount)
         )].sort((a, b) => a - b);
 
+        const pots = [];
         let prevLevel = 0;
+
         for (const level of splitLevels) {
             const segmentSize = level - prevLevel;
-            const inSegment = bets.filter(b => b.amount > prevLevel);
-            const potAmount = inSegment.reduce((sum, b) => sum + Math.min(b.amount - prevLevel, segmentSize), 0);
+            const inSegment = entries.filter(e => e.amount > prevLevel);
+            const potAmount = inSegment.reduce((sum, e) => sum + Math.min(e.amount - prevLevel, segmentSize), 0);
+            // Only non-folded players are eligible to win this pot
+            const eligible = inSegment.filter(e => !e.folded).map(e => e.id);
 
-            this.pots.push({
-                amount: potAmount,
-                contributors: inSegment.map(b => b.id),
-                winners: [],
-            });
+            pots.push({ amount: potAmount, contributors: eligible, winners: [] });
             prevLevel = level;
         }
 
-        // All remaining bets (above the last split level) go into one final pot
-        const finalContributors = bets.filter(b => b.amount > prevLevel);
-        const finalAmount = finalContributors.reduce((sum, b) => sum + (b.amount - prevLevel), 0);
+        // Final pot: everything above the last split level
+        const finalEntries = entries.filter(e => e.amount > prevLevel);
+        const finalAmount = finalEntries.reduce((sum, e) => sum + (e.amount - prevLevel), 0);
+        const finalEligible = finalEntries.filter(e => !e.folded).map(e => e.id);
 
         if (finalAmount > 0) {
-            const finalIds = finalContributors.map(b => b.id);
-            const lastPot = this.pots[this.pots.length - 1];
-            // Merge with last pot if same contributor set
-            if (lastPot && JSON.stringify([...lastPot.contributors].sort()) === JSON.stringify([...finalIds].sort())) {
-                lastPot.amount += finalAmount;
-            } else {
-                this.pots.push({ amount: finalAmount, contributors: finalIds, winners: [] });
-            }
+            pots.push({ amount: finalAmount, contributors: finalEligible, winners: [] });
         }
+
+        return pots;
     }
 
     _resolveWinner(winners) {
@@ -692,6 +707,7 @@ class PokerGame extends BaseGame {
                     avatar: p.avatar || 'default',
                     winAnimation: p.winAnimation || (p.isCPU ? 'robot' : 'confetti'),
                     isCPU: p.isCPU || false,
+                    personality: p.personality || null,
                     chips: pState.chips,
                     currentBet: pState.currentBet,
                     folded: pState.folded,
@@ -826,7 +842,7 @@ class PokerGame extends BaseGame {
         if (!currentPlayer || !currentPlayer.isCPU) return null;
 
         const ps = this.playerStates[currentPlayer.id];
-        const cpuAI = new CPUPlayer(currentPlayer.id, currentPlayer.name, currentPlayer.difficulty || 'medium');
+        const cpuAI = new CPUPlayer(currentPlayer.id, currentPlayer.name, currentPlayer.difficulty || 'medium', currentPlayer.personality || 'balanced');
 
         return cpuAI.decide({
             holeCards: ps.holeCards,

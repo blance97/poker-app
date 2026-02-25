@@ -150,21 +150,29 @@ class RoomManager {
         if (room.players.length >= room.maxPlayers) return { error: 'Room is full' };
 
         cpuIdCounter++;
-        const cpuNames = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta', 'Bot Eta', 'Bot Theta'];
+
+        const PERSONALITIES = [
+            { personality: 'aggressive', name: 'Bot Bully',    winAnimation: 'lightning' },
+            { personality: 'passive',    name: 'Bot Caution',  winAnimation: 'stars' },
+            { personality: 'bluffer',    name: 'Bot Bluff',    winAnimation: 'confetti' },
+            { personality: 'balanced',   name: 'Bot Balance',  winAnimation: 'fireworks' },
+            { personality: 'maniac',     name: 'Bot Chaos',    winAnimation: 'flames' },
+        ];
         const cpuCount = room.players.filter(p => p.isCPU).length;
-        const cpuName = cpuNames[cpuCount % cpuNames.length];
+        const preset = PERSONALITIES[cpuCount % PERSONALITIES.length];
 
         const cpuPlayer = {
             id: `cpu_${cpuIdCounter}`,
-            name: cpuName,
+            name: preset.name,
             isCPU: true,
             avatar: 'default',
-            winAnimation: 'robot',
+            winAnimation: preset.winAnimation,
             difficulty,
+            personality: preset.personality,
         };
 
         room.players.push(cpuPlayer);
-        logger.info('ROOM', `CPU "${cpuName}" (${difficulty}) added to room "${room.name}"`);
+        logger.info('ROOM', `CPU "${preset.name}" [${preset.personality}] (${difficulty}) added to room "${room.name}"`);
         return { room: this._sanitizeRoom(room), cpuPlayer };
     }
 
@@ -285,6 +293,7 @@ class RoomManager {
                 winAnimation: p.winAnimation || (p.isCPU ? 'robot' : 'confetti'),
                 isCPU: p.isCPU || false,
                 difficulty: p.difficulty,
+                personality: p.personality || null,
             })),
             playerCount: room.players.length,
             createdAt: room.createdAt,
